@@ -17,7 +17,7 @@ export function processCommand(command: string): {
       website += ".com";
     }
     return {
-      action: `Opening ${openMatch[1]} for you, ugh.`,
+      action: `Opening ${openMatch[1]} for you, Kaushik.`,
       url: `https://www.${website}`,
       isBrowserAction: true,
     };
@@ -28,7 +28,7 @@ export function processCommand(command: string): {
   if (ytMatch) {
     const query = encodeURIComponent(ytMatch[1].trim());
     return {
-      action: `Playing ${ytMatch[1]} on YouTube. Don't judge my music taste.`,
+      action: `Playing ${ytMatch[1]} on YouTube for you, Kaushik.`,
       url: `https://www.youtube.com/results?search_query=${query}`,
       isBrowserAction: true,
     };
@@ -39,7 +39,7 @@ export function processCommand(command: string): {
   if (spotifyMatch) {
     const query = encodeURIComponent(spotifyMatch[1].trim());
     return {
-      action: `Searching ${spotifyMatch[1]} on Spotify. Hope it's a banger.`,
+      action: `Searching ${spotifyMatch[1]} on Spotify for you, Kaushik.`,
       url: `https://open.spotify.com/search/${query}`,
       isBrowserAction: true,
     };
@@ -53,7 +53,7 @@ export function processCommand(command: string): {
     const number = waMatch[1].replace(/\s+/g, "");
     const message = encodeURIComponent(waMatch[2].trim());
     return {
-      action: `Sending your message. Let's hope they reply, Kaushik.`,
+      action: `Sending your WhatsApp message right away, Kaushik.`,
       url: `https://web.whatsapp.com/send?phone=${number}&text=${message}`,
       isBrowserAction: true,
     };

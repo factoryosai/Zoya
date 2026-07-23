@@ -1,12 +1,14 @@
 import { motion } from "motion/react";
+import { VisualizerTheme } from "./SettingsModal";
 
 type VisualizerState = "idle" | "listening" | "processing" | "speaking";
 
 interface VisualizerProps {
   state: VisualizerState;
+  colorTheme?: VisualizerTheme;
 }
 
-export default function Visualizer({ state }: VisualizerProps) {
+export default function Visualizer({ state, colorTheme = "violet" }: VisualizerProps) {
   const getRingAnimation = (index: number, reverse: boolean = false) => {
     const baseSpeed = state === "listening" ? 3 : state === "processing" ? 1.5 : state === "speaking" ? 2 : 15;
     return {
@@ -44,13 +46,36 @@ export default function Visualizer({ state }: VisualizerProps) {
     };
   };
 
-  // JARVIS color palette (Cyan/Blue) with Heer's personality (Violet/Pink hints)
   const getTheme = () => {
-    switch (state) {
-      case "listening": return { color: "rgba(139, 92, 246, 1)", glow: "shadow-violet-500/60", border: "border-violet-400" };
-      case "processing": return { color: "rgba(56, 189, 248, 1)", glow: "shadow-sky-400/80", border: "border-sky-400" };
-      case "speaking": return { color: "rgba(236, 72, 153, 1)", glow: "shadow-pink-500/80", border: "border-pink-400" };
-      default: return { color: "rgba(6, 182, 212, 0.8)", glow: "shadow-cyan-500/40", border: "border-cyan-500/50" }; // Cyan for idle
+    if (colorTheme === "cyan") {
+      switch (state) {
+        case "listening": return { color: "rgba(6, 182, 212, 1)", glow: "shadow-cyan-500/80", border: "border-cyan-400" };
+        case "processing": return { color: "rgba(59, 130, 246, 1)", glow: "shadow-blue-500/80", border: "border-blue-400" };
+        case "speaking": return { color: "rgba(14, 165, 233, 1)", glow: "shadow-sky-400/80", border: "border-sky-300" };
+        default: return { color: "rgba(6, 182, 212, 0.8)", glow: "shadow-cyan-500/40", border: "border-cyan-500/50" };
+      }
+    } else if (colorTheme === "emerald") {
+      switch (state) {
+        case "listening": return { color: "rgba(16, 185, 129, 1)", glow: "shadow-emerald-500/80", border: "border-emerald-400" };
+        case "processing": return { color: "rgba(20, 184, 166, 1)", glow: "shadow-teal-500/80", border: "border-teal-400" };
+        case "speaking": return { color: "rgba(52, 211, 153, 1)", glow: "shadow-emerald-400/80", border: "border-emerald-300" };
+        default: return { color: "rgba(16, 185, 129, 0.8)", glow: "shadow-emerald-500/40", border: "border-emerald-500/50" };
+      }
+    } else if (colorTheme === "amber") {
+      switch (state) {
+        case "listening": return { color: "rgba(245, 158, 11, 1)", glow: "shadow-amber-500/80", border: "border-amber-400" };
+        case "processing": return { color: "rgba(249, 115, 22, 1)", glow: "shadow-orange-500/80", border: "border-orange-400" };
+        case "speaking": return { color: "rgba(251, 191, 36, 1)", glow: "shadow-amber-300/80", border: "border-amber-300" };
+        default: return { color: "rgba(245, 158, 11, 0.8)", glow: "shadow-amber-500/40", border: "border-amber-500/50" };
+      }
+    } else {
+      // Default: Violet / Pink
+      switch (state) {
+        case "listening": return { color: "rgba(139, 92, 246, 1)", glow: "shadow-violet-500/60", border: "border-violet-400" };
+        case "processing": return { color: "rgba(56, 189, 248, 1)", glow: "shadow-sky-400/80", border: "border-sky-400" };
+        case "speaking": return { color: "rgba(236, 72, 153, 1)", glow: "shadow-pink-500/80", border: "border-pink-400" };
+        default: return { color: "rgba(168, 85, 247, 0.8)", glow: "shadow-purple-500/40", border: "border-purple-500/50" };
+      }
     }
   };
 

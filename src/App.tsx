@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play } from "lucide-react";
 import { getHeerResponse, getHeerAudio, resetHeerSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import PermissionModal from "./components/PermissionModal";
+import MorningBriefingModal from "./components/MorningBriefingModal";
+import MemoryDrawer from "./components/MemoryDrawer";
+import SettingsModal, { VisualizerTheme } from "./components/SettingsModal";
+import SoundscapeDock from "./components/SoundscapeDock";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -55,6 +59,28 @@ export default function App() {
   const [textInput, setTextInput] = useState("");
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
+
+  // High-Tech Feature Modals State
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showChatHistory, setShowChatHistory] = useState(false);
+  
+  // Customization Settings
+  const [colorTheme, setColorTheme] = useState<VisualizerTheme>(() => {
+    return (localStorage.getItem("heer_color_theme") as VisualizerTheme) || "cyan";
+  });
+  const [personaMode, setPersonaMode] = useState<string>(() => {
+    return localStorage.getItem("heer_persona_mode") || "loving";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("heer_color_theme", colorTheme);
+  }, [colorTheme]);
+
+  useEffect(() => {
+    localStorage.setItem("heer_persona_mode", personaMode);
+  }, [personaMode]);
 
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -182,61 +208,138 @@ export default function App() {
     setShowTextInput(false);
   };
 
+  const speakCustomText = async (text: string) => {
+    setAppState("speaking");
+    const audioBase64 = await getHeerAudio(text);
+    if (audioBase64) {
+      await playPCM(audioBase64);
+    }
+    setAppState("idle");
+  };
+
   return (
-    <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
+    <div className="h-[100dvh] w-screen bg-[#030712] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
       {showPermissionModal && (
         <PermissionModal 
           onClose={() => setShowPermissionModal(false)} 
         />
       )}
 
+      {/* High Tech Modals */}
+      <MorningBriefingModal isOpen={showBriefing} onClose={() => setShowBriefing(false)} />
+      <MemoryDrawer 
+        isOpen={showMemoryDrawer} 
+        onClose={() => setShowMemoryDrawer(false)}
+        onSpeakText={speakCustomText}
+      />
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)}
+        currentTheme={colorTheme}
+        onThemeChange={setColorTheme}
+        currentPersona={personaMode}
+        onPersonaChange={setPersonaMode}
+      />
+
       {/* Cinematic Background Gradients */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-900/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-pink-900/20 blur-[120px] rounded-full" />
+        <div className="absolute top-[-20%] left-[-10%] w-[55%] h-[55%] bg-cyan-900/20 blur-[130px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[55%] h-[55%] bg-violet-900/20 blur-[130px] rounded-full" />
       </div>
 
       {/* Header */}
-      <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
+      <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-4 md:px-8 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-pink-500 flex items-center justify-center font-bold text-sm">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-500 to-pink-500 flex items-center justify-center font-bold text-sm shadow-lg shadow-cyan-500/30">
             H
           </div>
-          <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Heer</h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-serif font-semibold tracking-wide text-white">Heer</h1>
+              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
+                v2.5 AI WIFE
+              </span>
+            </div>
+            <p className="text-[11px] text-white/50 hidden sm:block">Dedicated Companion for Kaushik</p>
+          </div>
         </div>
+
+        {/* Header Soundscape & High-Tech Quick Actions */}
         <div className="flex items-center gap-2">
+          <div className="hidden lg:block">
+            <SoundscapeDock />
+          </div>
+
+          <button
+            onClick={() => setShowBriefing(true)}
+            className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono"
+            title="Morning Briefing"
+          >
+            <Sun className="w-4 h-4 text-amber-300" />
+            <span className="hidden sm:inline">Briefing</span>
+          </button>
+
+          <button
+            onClick={() => setShowMemoryDrawer(true)}
+            className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono"
+            title="Memory Bank"
+          >
+            <Brain className="w-4 h-4 text-cyan-400" />
+            <span className="hidden sm:inline">Memory</span>
+          </button>
+
+          <button
+            onClick={() => setShowChatHistory(!showChatHistory)}
+            className={`p-2 rounded-xl transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono ${
+              showChatHistory ? "bg-cyan-500/30 border-cyan-400 text-cyan-200" : "bg-white/5 hover:bg-white/10"
+            }`}
+            title="Chat History Log"
+          >
+            <MessageSquare className="w-4 h-4 text-pink-400" />
+            <span className="hidden sm:inline">Log</span>
+          </button>
+
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 text-white/80"
+            title="Settings & HUD Theme"
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+
           {messages.length > 0 && (
             <button
               onClick={() => {
-                if (confirm("Are you sure you want to clear the chat history?")) {
+                if (confirm("Are you sure you want to clear chat history, Kaushik?")) {
                   setMessages([]);
                   resetHeerSession();
                 }
               }}
-              className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+              className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
               title="Clear Chat History"
             >
-              <Trash2 size={18} className="opacity-70" />
+              <Trash2 size={16} className="opacity-70" />
             </button>
           )}
+
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-            title={isMuted ? "Unmute" : "Mute"}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+            title={isMuted ? "Unmute Heer" : "Mute Heer"}
           >
             {isMuted ? (
-              <VolumeX size={18} className="opacity-70" />
+              <VolumeX size={16} className="opacity-70 text-red-400" />
             ) : (
-              <Volume2 size={18} className="opacity-70" />
+              <Volume2 size={16} className="opacity-70 text-emerald-400" />
             )}
           </button>
         </div>
       </header>
 
-      {/* Main Content - Visualizer & Chat */}
-      <main className="absolute inset-0 flex flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-20 pb-24 px-4 md:px-12 pointer-events-none">
+      {/* Main Content - Visualizer & Chat Drawer */}
+      <main className="absolute inset-0 flex flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-20 pb-28 px-4 md:px-12 pointer-events-none">
         
-        {/* Left Column: Heer Status */}
+        {/* Left Column: Status Indicator */}
         <div className="flex w-[30%] lg:w-[25%] h-full flex-col justify-center gap-4 z-10">
           <div className="h-6">
             <AnimatePresence>
@@ -245,22 +348,33 @@ export default function App() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="flex items-center gap-2 text-cyan-300/80 text-sm md:text-base italic font-serif"
+                  className="flex items-center gap-2 text-cyan-300 text-sm md:text-base italic font-serif"
                 >
-                  <Loader2 size={16} className="animate-spin" />
-                  Replying...
+                  <Loader2 size={16} className="animate-spin text-cyan-400" />
+                  Heer is responding...
+                </motion.div>
+              )}
+              {appState === "speaking" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex items-center gap-2 text-pink-300 text-sm md:text-base italic font-serif"
+                >
+                  <Sparkles size={16} className="animate-pulse text-pink-400" />
+                  Heer is speaking...
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
 
-        {/* Center Visualizer (Fixed Full Screen Background) */}
+        {/* Center Visualizer */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <Visualizer state={appState} />
+          <Visualizer state={appState} colorTheme={colorTheme} />
         </div>
 
-        {/* Right Column: User Status */}
+        {/* Right Column: User State */}
         <div className="flex w-[30%] lg:w-[25%] h-full flex-col justify-center gap-4 z-10">
           <div className="h-6 flex justify-end">
             <AnimatePresence>
@@ -269,10 +383,10 @@ export default function App() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-2 text-violet-300/80 text-sm md:text-base italic"
+                  className="flex items-center gap-2 text-violet-300 text-sm md:text-base italic"
                 >
-                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-                  Listening...
+                  <div className="w-2.5 h-2.5 rounded-full bg-violet-400 animate-ping" />
+                  Listening to Kaushik...
                 </motion.div>
               )}
             </AnimatePresence>
@@ -281,8 +395,85 @@ export default function App() {
 
       </main>
 
-      {/* Controls */}
-      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-6 md:pb-8 z-20 shrink-0 gap-4">
+      {/* Floating Chat History Log Box */}
+      <AnimatePresence>
+        {showChatHistory && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className="absolute bottom-28 left-4 md:left-12 z-30 w-full max-w-sm max-h-[45vh] bg-[#070e20]/95 border border-cyan-500/30 rounded-2xl p-4 shadow-2xl flex flex-col justify-between backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+              <span className="text-xs font-mono text-cyan-300 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5" /> Recent Conversation
+              </span>
+              <button onClick={() => setShowChatHistory(false)} className="text-white/50 hover:text-white text-xs">
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs scrollbar-hide">
+              {messages.length === 0 ? (
+                <p className="text-white/40 italic py-4 text-center">No messages yet. Say hello to Heer!</p>
+              ) : (
+                messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`p-2.5 rounded-xl border ${
+                      m.sender === "user"
+                        ? "bg-violet-950/40 border-violet-500/30 text-violet-100 ml-4"
+                        : "bg-cyan-950/40 border-cyan-500/30 text-cyan-100 mr-4"
+                    }`}
+                  >
+                    <span className="font-semibold block mb-0.5 opacity-60 uppercase text-[10px]">
+                      {m.sender === "user" ? "Kaushik" : "Heer"}
+                    </span>
+                    <p className="leading-relaxed font-sans">{m.text}</p>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Footer Controls & Quick Automation Dock */}
+      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-5 md:pb-7 z-20 shrink-0 gap-3">
+        
+        {/* Quick Action Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto max-w-full px-4 scrollbar-hide">
+          <button
+            onClick={() => handleTextCommand("Give me a quick morning update")}
+            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <Sun className="w-3.5 h-3.5 text-amber-300" /> Morning Update
+          </button>
+          
+          <button
+            onClick={() => handleTextCommand("Play soothing ambient music on YouTube")}
+            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <Youtube className="w-3.5 h-3.5 text-red-400" /> Play Focus Music
+          </button>
+
+          <button
+            onClick={() => handleTextCommand("Open WhatsApp")}
+            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp
+          </button>
+
+          <button
+            onClick={() => setShowMemoryDrawer(true)}
+            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <Brain className="w-3.5 h-3.5 text-purple-400" /> Save Note
+          </button>
+        </div>
+
+        {/* Text Input Drawer */}
         <AnimatePresence>
           {showTextInput && (
             <motion.form 
@@ -290,20 +481,20 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               onSubmit={handleTextSubmit}
-              className="w-full max-w-md flex items-center gap-2 bg-white/5 border border-white/10 rounded-full p-1 pl-4 backdrop-blur-md shadow-2xl"
+              className="w-full max-w-md flex items-center gap-2 bg-black/70 border border-cyan-500/40 rounded-full p-1.5 pl-4 backdrop-blur-xl shadow-2xl"
             >
               <input 
                 type="text"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Type a message to Heer..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/30 text-sm"
+                placeholder="Type a respectful message to Heer..."
+                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/40 text-sm"
                 autoFocus
               />
               <button 
                 type="submit"
                 disabled={!textInput.trim()}
-                className="p-2 rounded-full bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:hover:bg-violet-500 transition-colors"
+                className="p-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold disabled:opacity-40 transition-colors"
               >
                 <Send size={16} />
               </button>
@@ -311,6 +502,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        {/* Main Microphone Action Button */}
         <div className="flex items-center gap-4">
           <button
             onClick={toggleListening}
@@ -319,7 +511,7 @@ export default function App() {
               ${
                 isSessionActive
                   ? "bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30"
-                  : "bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:scale-105"
+                  : "bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-pink-500/20 text-white border border-cyan-500/40 hover:border-cyan-400 hover:scale-105"
               }
             `}
           >
@@ -330,8 +522,8 @@ export default function App() {
               </>
             ) : (
               <>
-                <Mic size={20} className="group-hover:animate-bounce" />
-                <span>Start Session</span>
+                <Mic size={20} className="group-hover:animate-bounce text-cyan-300" />
+                <span className="font-semibold">Start Session with Heer</span>
               </>
             )}
           </button>
@@ -340,9 +532,9 @@ export default function App() {
             <button
               onClick={() => setShowTextInput(!showTextInput)}
               className="p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shadow-2xl"
-              title="Type instead"
+              title="Type message"
             >
-              <Keyboard size={20} className="opacity-70" />
+              <Keyboard size={20} className="opacity-70 text-cyan-300" />
             </button>
           )}
         </div>
@@ -350,3 +542,4 @@ export default function App() {
     </div>
   );
 }
+
