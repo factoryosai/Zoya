@@ -1,6 +1,7 @@
 import React from "react";
-import { X, Sliders, Palette, Heart, Sparkles, Volume2, Shield, Mic } from "lucide-react";
+import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { TimeOfDay } from "./DynamicBackground";
 
 export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber";
 
@@ -13,6 +14,8 @@ interface SettingsModalProps {
   onPersonaChange: (persona: string) => void;
   wakeWordSensitivity: number;
   onWakeWordSensitivityChange: (sensitivity: number) => void;
+  timeOfDayMode: TimeOfDay;
+  onTimeOfDayModeChange: (mode: TimeOfDay) => void;
 }
 
 export default function SettingsModal({
@@ -24,6 +27,8 @@ export default function SettingsModal({
   onPersonaChange,
   wakeWordSensitivity,
   onWakeWordSensitivityChange,
+  timeOfDayMode,
+  onTimeOfDayModeChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -79,6 +84,38 @@ export default function SettingsModal({
                 <span>Low (Prevents False Triggers)</span>
                 <span>Balanced (50%)</span>
                 <span>High (Sensitive)</span>
+              </div>
+            </div>
+
+            {/* Dynamic Time-of-Day Atmosphere */}
+            <div>
+              <label className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 mb-3">
+                <Sun className="w-3.5 h-3.5 text-amber-300" /> Time of Day Atmosphere Glow:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "auto", label: "Auto Clock Synced", icon: CloudSun, color: "from-cyan-500 to-indigo-500" },
+                  { id: "morning", label: "Sunrise Golden", icon: Sun, color: "from-amber-500 to-rose-500" },
+                  { id: "afternoon", label: "Midday Sky", icon: CloudSun, color: "from-sky-400 to-emerald-400" },
+                  { id: "evening", label: "Twilight Dusk", icon: Sunset, color: "from-violet-500 to-fuchsia-500" },
+                  { id: "night", label: "Deep Space Night", icon: Moon, color: "from-cyan-900 to-indigo-950" },
+                ].map((mode) => {
+                  const Icon = mode.icon;
+                  return (
+                    <button
+                      key={mode.id}
+                      onClick={() => onTimeOfDayModeChange(mode.id as TimeOfDay)}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-medium transition-all ${
+                        timeOfDayMode === mode.id
+                          ? "border-cyan-400 bg-white/10 text-white shadow-lg"
+                          : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                      <span className="truncate">{mode.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

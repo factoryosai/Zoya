@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Maximize2, Minimize2, Volume2, Sparkles, Mic } from "lucide-react";
 import { VisualizerTheme } from "./SettingsModal";
-import heerAvatar from "../assets/images/heer_avatar_1784816886423.jpg";
+import heerAvatar from "../assets/images/heer_avatar_1784820674617.jpg";
 
 type VisualizerState = "idle" | "listening" | "processing" | "speaking";
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play, Flame } from "lucide-react";
 import { getHeerResponse, getHeerAudio, resetHeerSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
@@ -8,6 +8,8 @@ import PermissionModal from "./components/PermissionModal";
 import MorningBriefingModal from "./components/MorningBriefingModal";
 import MemoryDrawer from "./components/MemoryDrawer";
 import SettingsModal, { VisualizerTheme } from "./components/SettingsModal";
+import ThoughtOfDayModal from "./components/ThoughtOfDayModal";
+import DynamicBackground, { TimeOfDay, getTimeOfDayLabel } from "./components/DynamicBackground";
 import SoundscapeDock from "./components/SoundscapeDock";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
@@ -63,6 +65,7 @@ export default function App() {
   // High-Tech Feature Modals State
   const [showBriefing, setShowBriefing] = useState(false);
   const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
+  const [showThoughtModal, setShowThoughtModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   
@@ -77,6 +80,9 @@ export default function App() {
     const saved = localStorage.getItem("heer_wakeword_sensitivity");
     return saved ? parseInt(saved, 10) : 50;
   });
+  const [timeOfDayMode, setTimeOfDayMode] = useState<TimeOfDay>(() => {
+    return (localStorage.getItem("heer_time_of_day_mode") as TimeOfDay) || "auto";
+  });
 
   useEffect(() => {
     localStorage.setItem("heer_color_theme", colorTheme);
@@ -89,6 +95,23 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("heer_wakeword_sensitivity", wakeWordSensitivity.toString());
   }, [wakeWordSensitivity]);
+
+  useEffect(() => {
+    localStorage.setItem("heer_time_of_day_mode", timeOfDayMode);
+  }, [timeOfDayMode]);
+
+  // Auto show daily Thought of the Day popup once per day
+  useEffect(() => {
+    const lastShownDate = localStorage.getItem("heer_last_thought_date");
+    const today = new Date().toDateString();
+    if (lastShownDate !== today) {
+      const timer = setTimeout(() => {
+        setShowThoughtModal(true);
+        localStorage.setItem("heer_last_thought_date", today);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -240,6 +263,11 @@ export default function App() {
         onClose={() => setShowMemoryDrawer(false)}
         onSpeakText={speakCustomText}
       />
+      <ThoughtOfDayModal 
+        isOpen={showThoughtModal} 
+        onClose={() => setShowThoughtModal(false)}
+        onSpeakText={speakCustomText}
+      />
       <SettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)}
@@ -249,13 +277,12 @@ export default function App() {
         onPersonaChange={setPersonaMode}
         wakeWordSensitivity={wakeWordSensitivity}
         onWakeWordSensitivityChange={setWakeWordSensitivity}
+        timeOfDayMode={timeOfDayMode}
+        onTimeOfDayModeChange={setTimeOfDayMode}
       />
 
-      {/* Cinematic Background Gradients */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[55%] h-[55%] bg-cyan-900/20 blur-[130px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[55%] h-[55%] bg-violet-900/20 blur-[130px] rounded-full" />
-      </div>
+      {/* Dynamic Cinematic Time-of-Day Background */}
+      <DynamicBackground timeOfDayMode={timeOfDayMode} />
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-4 md:px-8 py-4">
@@ -268,6 +295,14 @@ export default function App() {
               <h1 className="text-xl font-serif font-semibold tracking-wide text-white">Heer</h1>
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
                 v2.5 AI WIFE
+              </span>
+              <span 
+                onClick={() => setShowSettings(true)}
+                className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-mono border border-white/10 cursor-pointer transition-all"
+                title="Click to adjust Time-of-Day Atmosphere"
+              >
+                <span>{getTimeOfDayLabel(timeOfDayMode).icon}</span>
+                <span>{getTimeOfDayLabel(timeOfDayMode).label.split(" ")[0]}</span>
               </span>
             </div>
             <p className="text-[11px] text-white/50 hidden sm:block">Dedicated Companion for Kaushik</p>
@@ -287,6 +322,15 @@ export default function App() {
           >
             <Sun className="w-4 h-4 text-amber-300" />
             <span className="hidden sm:inline">Briefing</span>
+          </button>
+
+          <button
+            onClick={() => setShowThoughtModal(true)}
+            className="p-2 rounded-xl bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 transition-all border border-amber-500/30 text-amber-200 flex items-center gap-1.5 text-xs font-mono shadow-sm"
+            title="Aaj Ka Vichar — Thought of the Day"
+          >
+            <Flame className="w-4 h-4 text-amber-400 fill-amber-400/30" />
+            <span className="hidden sm:inline">Vichar</span>
           </button>
 
           <button
