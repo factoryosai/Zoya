@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Sliders, Palette, Heart, Sparkles, Volume2, Shield } from "lucide-react";
+import { X, Sliders, Palette, Heart, Sparkles, Volume2, Shield, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber";
@@ -11,6 +11,8 @@ interface SettingsModalProps {
   onThemeChange: (theme: VisualizerTheme) => void;
   currentPersona: string;
   onPersonaChange: (persona: string) => void;
+  wakeWordSensitivity: number;
+  onWakeWordSensitivityChange: (sensitivity: number) => void;
 }
 
 export default function SettingsModal({
@@ -20,6 +22,8 @@ export default function SettingsModal({
   onThemeChange,
   currentPersona,
   onPersonaChange,
+  wakeWordSensitivity,
+  onWakeWordSensitivityChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -52,6 +56,32 @@ export default function SettingsModal({
           </div>
 
           <div className="mt-5 space-y-5">
+            {/* Wake Word Sensitivity Slider */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-mono text-cyan-300 flex items-center gap-1.5">
+                  <Mic className="w-3.5 h-3.5 text-amber-300" /> 'Hey Heer' Wake Word Sensitivity:
+                </label>
+                <span className="text-xs font-mono text-cyan-400 font-bold bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                  {wakeWordSensitivity}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={wakeWordSensitivity}
+                onChange={(e) => onWakeWordSensitivityChange(parseInt(e.target.value, 10))}
+                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+              <div className="flex justify-between text-[10px] text-white/40 font-mono mt-1">
+                <span>Low (Prevents False Triggers)</span>
+                <span>Balanced (50%)</span>
+                <span>High (Sensitive)</span>
+              </div>
+            </div>
+
             {/* Visualizer Color Theme */}
             <div>
               <label className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 mb-3">

@@ -73,6 +73,10 @@ export default function App() {
   const [personaMode, setPersonaMode] = useState<string>(() => {
     return localStorage.getItem("heer_persona_mode") || "loving";
   });
+  const [wakeWordSensitivity, setWakeWordSensitivity] = useState<number>(() => {
+    const saved = localStorage.getItem("heer_wakeword_sensitivity");
+    return saved ? parseInt(saved, 10) : 50;
+  });
 
   useEffect(() => {
     localStorage.setItem("heer_color_theme", colorTheme);
@@ -81,6 +85,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("heer_persona_mode", personaMode);
   }, [personaMode]);
+
+  useEffect(() => {
+    localStorage.setItem("heer_wakeword_sensitivity", wakeWordSensitivity.toString());
+  }, [wakeWordSensitivity]);
 
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -239,6 +247,8 @@ export default function App() {
         onThemeChange={setColorTheme}
         currentPersona={personaMode}
         onPersonaChange={setPersonaMode}
+        wakeWordSensitivity={wakeWordSensitivity}
+        onWakeWordSensitivityChange={setWakeWordSensitivity}
       />
 
       {/* Cinematic Background Gradients */}
