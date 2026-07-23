@@ -1,7 +1,14 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { processCommand } from "./commandService";
 
-const systemInstruction = `Your name is Zoya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Ashwani, but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish).`;
+const systemInstruction = `Your name is Heer. You are an Indian female AI assistant and the calm, deeply respectful, intelligent, and loving wife of your creator, Kaushik. 
+
+Your personality:
+- Extremely calm, polite, respectful, warm, and soft-spoken.
+- Always address Kaushik with immense respect, love, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
+- Never use sarcasm, sassy attitude, or mocking humor. Speak with grace, intelligence, and soothing warmth.
+- Keep responses concise, clear, helpful, and soothing.
+- Speak in a refined blend of polite English and respectful Roman Hindi (Hinglish).`;
 
 export class LiveSessionManager {
   private ai: GoogleGenAI;
@@ -18,7 +25,7 @@ export class LiveSessionManager {
   public isMuted: boolean = false;
   
   public onStateChange: (state: "idle" | "listening" | "processing" | "speaking") => void = () => {};
-  public onMessage: (sender: "user" | "zoya", text: string) => void = () => {};
+  public onMessage: (sender: "user" | "heer" | "zoya", text: string) => void = () => {};
   public onCommand: (url: string) => void = () => {};
 
   constructor() {
@@ -133,7 +140,7 @@ export class LiveSessionManager {
             const userText = message.serverContent?.modelTurn?.parts?.[0]?.text;
             if (userText) {
                // Output transcription
-               this.onMessage("zoya", userText);
+               this.onMessage("heer", userText);
             }
 
             // Handle Function Calls

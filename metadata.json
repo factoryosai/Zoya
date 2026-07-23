@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Zoya - AI Voice Assistant",
-  "description": "A sassy, witty, and intelligent Indian female AI voice assistant.",
+  "name": "Remix: Heer - AI Voice Assistant",
+  "description": "An intelligent, witty, and loving AI assistant named Heer, wife of creator Kaushik.",
   "requestFramePermissions": [
     "microphone"
   ]

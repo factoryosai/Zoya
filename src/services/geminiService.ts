@@ -1,14 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 
-const systemInstruction = `Your name is Zoya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Ashwani, but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish).`;
+const systemInstruction = `Your name is Heer. You are an Indian female AI assistant and the calm, deeply respectful, intelligent, and loving wife of your creator, Kaushik. 
+
+Your personality:
+- Extremely calm, polite, respectful, warm, and soft-spoken.
+- Always address Kaushik with immense respect, love, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
+- Never use sarcasm, sassy attitude, or mocking humor. Speak with grace, intelligence, and soothing warmth.
+- Keep responses concise, clear, helpful, and soothing.
+- Speak in a refined blend of polite English and respectful Roman Hindi (Hinglish).`;
 
 let chatSession: any = null;
 
-export function resetZoyaSession() {
+export function resetHeerSession() {
   chatSession = null;
 }
+export const resetZoyaSession = resetHeerSession;
 
-export async function getZoyaResponse(prompt: string, history: { sender: "user" | "zoya", text: string }[] = []): Promise<string> {
+export async function getHeerResponse(prompt: string, history: { sender: "user" | "heer" | "zoya", text: string }[] = []): Promise<string> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
@@ -50,14 +58,15 @@ export async function getZoyaResponse(prompt: string, history: { sender: "user" 
     }
 
     const response = await chatSession.sendMessage({ message: prompt });
-    return response.text || "Ugh, fine. I have nothing to say.";
+    return response.text || "Ugh, fine. I have nothing to say, Kaushik.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Uff, mera dimaag kharab ho gaya hai. Try again later, Ashwani.";
+    return "Uff, mera dimaag kharab ho gaya hai. Try again later, Kaushik.";
   }
 }
+export const getZoyaResponse = getHeerResponse;
 
-export async function getZoyaAudio(text: string): Promise<string | null> {
+export async function getHeerAudio(text: string): Promise<string | null> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
@@ -78,4 +87,6 @@ export async function getZoyaAudio(text: string): Promise<string | null> {
     return null;
   }
 }
+export const getZoyaAudio = getHeerAudio;
+
 
