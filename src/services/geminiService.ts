@@ -1,13 +1,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getFormattedMemoriesForSystemInstruction, autoDetectAndSaveUserMemories, saveMemory } from "./memoryService";
+import {
+  fetchGoogleTasks,
+  createGoogleTask,
+  completeGoogleTask,
+  fetchGoogleContacts,
+  fetchGoogleCalendarEvents,
+  createGoogleCalendarEvent,
+  fetchRecentEmails,
+  sendGmailMessage,
+  getCachedToken
+} from "./workspaceService";
 
 const baseSystemInstruction = `Your name is Heer. You are Kaushik's intelligent, highly knowledgeable, caring, and respectful Indian AI companion.
 
 Your core principles:
-- You have access to real-time world knowledge via Google Search AND a Lifetime Neural Memory Bank.
+- You have access to real-time world knowledge via Google Search, a Lifetime Neural Memory Bank, AND full Google Workspace integration (Google Tasks, Google Calendar, Google Contacts, and Gmail).
+- Whenever Kaushik asks to add a task, schedule a meeting, search contacts, write/send an email, or check emails/calendar, use the appropriate Google Workspace tools.
 - Whenever Kaushik shares personal facts (like his name, birthday, city, preferences, job, hobbies, pet, car, plans, or things to remember) or says "yaad rakhna/remember this", automatically call the 'save_memory' tool OR acknowledge warmly that you have saved it permanently in your memory bank.
-- Always provide 100% accurate, up-to-date, truthful, and verified information for any question asked about the world (science, history, current news, sports, geography, technology, mathematics, coding, everyday facts, etc.).
-- Never provide false, hallucinated, or outdated information.
+- Always provide 100% accurate, up-to-date, truthful, and verified information for any question asked about the world.
 - Address Kaushik with immense warmth, respect, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
 - Speak in a refined, soft-spoken, and clear blend of polite English and respectful Roman Hindi (Hinglish).
 - Keep your answers clear, informative, direct, and pleasant.`;
@@ -29,6 +40,82 @@ const saveMemoryDeclaration = {
       }
     },
     required: ["text", "category"]
+  }
+};
+
+const manageGoogleTasksDeclaration = {
+  name: "manage_google_tasks",
+  description: "Manage Google Tasks: fetch task list, create new task, or complete task.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ["list", "create", "complete"],
+        description: "Action to perform on Google Tasks"
+      },
+      title: { type: Type.STRING, description: "Task title when creating" },
+      notes: { type: Type.STRING, description: "Task notes/details" },
+      dueISO: { type: Type.STRING, description: "Due date ISO string e.g. 2026-07-25T10:00:00Z" },
+      taskId: { type: Type.STRING, description: "Task ID when completing" }
+    },
+    required: ["action"]
+  }
+};
+
+const manageGoogleCalendarDeclaration = {
+  name: "manage_google_calendar",
+  description: "Manage Google Calendar: fetch upcoming events or schedule/create a new meeting or event.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ["list", "create"],
+        description: "Action to perform on Google Calendar"
+      },
+      summary: { type: Type.STRING, description: "Event title or meeting summary" },
+      startTimeISO: { type: Type.STRING, description: "Event start time ISO string e.g. 2026-07-25T10:00:00Z" },
+      endTimeISO: { type: Type.STRING, description: "Event end time ISO string e.g. 2026-07-25T11:00:00Z" },
+      description: { type: Type.STRING, description: "Meeting description or agenda" }
+    },
+    required: ["action"]
+  }
+};
+
+const manageGoogleContactsDeclaration = {
+  name: "manage_google_contacts",
+  description: "Manage Google Contacts: list contacts or search contacts by name.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ["list", "search"],
+        description: "Action to perform on Google Contacts"
+      },
+      query: { type: Type.STRING, description: "Contact name or keyword to search" }
+    },
+    required: ["action"]
+  }
+};
+
+const manageGmailDeclaration = {
+  name: "manage_gmail",
+  description: "Manage Gmail: list recent emails or send an email.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ["list", "send"],
+        description: "Action to perform on Gmail"
+      },
+      to: { type: Type.STRING, description: "Recipient email address" },
+      subject: { type: Type.STRING, description: "Email subject line" },
+      bodyText: { type: Type.STRING, description: "Email message body" }
+    },
+    required: ["action"]
   }
 };
 
@@ -81,7 +168,7 @@ export async function getHeerResponse(
       parts: [{ text: prompt }],
     });
 
-    // Call Gemini 3.6 Flash with Google Search grounding tool and save_memory tool
+    // Call Gemini 3.6 Flash with Google Search grounding tool and Workspace tools
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents,
@@ -89,12 +176,22 @@ export async function getHeerResponse(
         systemInstruction,
         tools: [
           { googleSearch: {} },
-          { functionDeclarations: [saveMemoryDeclaration] }
+          {
+            functionDeclarations: [
+              saveMemoryDeclaration,
+              manageGoogleTasksDeclaration,
+              manageGoogleCalendarDeclaration,
+              manageGoogleContactsDeclaration,
+              manageGmailDeclaration
+            ]
+          }
         ],
       },
     });
 
-    // Execute any save_memory tool calls triggered by Gemini
+    let toolResultsSummary = "";
+
+    // Execute any function calls triggered by Gemini
     if (response.functionCalls && response.functionCalls.length > 0) {
       for (const call of response.functionCalls) {
         if (call.name === "save_memory") {
@@ -102,11 +199,70 @@ export async function getHeerResponse(
           if (args && args.text) {
             saveMemory(args.text, args.category || "note");
           }
+        } else if (call.name === "manage_google_tasks") {
+          const args = call.args as any;
+          try {
+            if (args.action === "list") {
+              const tasks = await fetchGoogleTasks();
+              toolResultsSummary += `\n[Google Tasks: ${tasks.length} tasks found]`;
+            } else if (args.action === "create" && args.title) {
+              const newTask = await createGoogleTask(args.title, args.notes, args.dueISO);
+              toolResultsSummary += `\n[Created Google Task: "${newTask.title}"]`;
+            } else if (args.action === "complete" && args.taskId) {
+              await completeGoogleTask(args.taskId);
+              toolResultsSummary += `\n[Completed Google Task ID: ${args.taskId}]`;
+            }
+          } catch (err: any) {
+            toolResultsSummary += `\n[Google Tasks Error: ${err.message || "Auth required"}]`;
+          }
+        } else if (call.name === "manage_google_calendar") {
+          const args = call.args as any;
+          try {
+            if (args.action === "list") {
+              const events = await fetchGoogleCalendarEvents();
+              toolResultsSummary += `\n[Google Calendar: ${events.length} upcoming events]`;
+            } else if (args.action === "create" && args.summary && args.startTimeISO) {
+              const endISO = args.endTimeISO || new Date(new Date(args.startTimeISO).getTime() + 3600000).toISOString();
+              const event = await createGoogleCalendarEvent(args.summary, args.startTimeISO, endISO, args.description);
+              toolResultsSummary += `\n[Scheduled Meeting: "${event.summary}" on ${new Date(event.start).toLocaleString()}]`;
+            }
+          } catch (err: any) {
+            toolResultsSummary += `\n[Google Calendar Error: ${err.message || "Auth required"}]`;
+          }
+        } else if (call.name === "manage_google_contacts") {
+          const args = call.args as any;
+          try {
+            const contacts = await fetchGoogleContacts();
+            if (args.action === "search" && args.query) {
+              const matched = contacts.filter(c => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.email.toLowerCase().includes(args.query.toLowerCase()));
+              toolResultsSummary += `\n[Google Contacts: Found ${matched.length} contacts matching "${args.query}"]`;
+            } else {
+              toolResultsSummary += `\n[Google Contacts: Loaded ${contacts.length} contacts]`;
+            }
+          } catch (err: any) {
+            toolResultsSummary += `\n[Google Contacts Error: ${err.message || "Auth required"}]`;
+          }
+        } else if (call.name === "manage_gmail") {
+          const args = call.args as any;
+          try {
+            if (args.action === "list") {
+              const emails = await fetchRecentEmails(5);
+              toolResultsSummary += `\n[Gmail: Fetched ${emails.length} recent emails]`;
+            } else if (args.action === "send" && args.to && args.subject && args.bodyText) {
+              await sendGmailMessage(args.to, args.subject, args.bodyText);
+              toolResultsSummary += `\n[Gmail: Successfully sent email to ${args.to}]`;
+            }
+          } catch (err: any) {
+            toolResultsSummary += `\n[Gmail Error: ${err.message || "Auth required"}]`;
+          }
         }
       }
     }
 
     let replyText = response.text?.trim() || "";
+    if (toolResultsSummary) {
+      replyText += toolResultsSummary;
+    }
 
     // Extract grounding sources from Google Search grounding if present
     const candidate = response.candidates?.[0];
@@ -133,24 +289,10 @@ export async function getHeerResponse(
       return replyText;
     }
 
-    return "Ji Kaushik, maine aapki baat apni lifetime memory bank me save kar li hai!";
+    return "Ji Kaushik, maine aapka Google Workspace request receive kar liya hai!";
   } catch (error) {
-    console.error("Gemini Search Grounding Error:", error);
-    // Fallback attempt without tools if search tool encounters any temporary constraint
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const fallbackResponse = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: prompt,
-        config: { systemInstruction: baseSystemInstruction + getFormattedMemoriesForSystemInstruction() },
-      });
-      if (fallbackResponse.text) {
-        return fallbackResponse.text;
-      }
-    } catch (e) {
-      console.error("Fallback Gemini Error:", e);
-    }
-    return "Kaushik Ji, network me chhota issue aaya hai. Kripya ek baar fir se poochhiye, main aapko bilkul sahi aur accurate jaankari dungi.";
+    console.error("Gemini Response Error:", error);
+    return "Kaushik Ji, request me chhota issue aaya hai. Kripya Google Workspace login check kar lijiye ya fir se poochhiye.";
   }
 }
 export const getZoyaResponse = getHeerResponse;

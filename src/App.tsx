@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play, Flame } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play, Flame, Calendar, CheckSquare, Users, Mail, LayoutGrid } from "lucide-react";
 import { getHeerResponse, getHeerAudio, resetHeerSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
@@ -11,6 +11,7 @@ import SettingsModal, { VisualizerTheme } from "./components/SettingsModal";
 import ThoughtOfDayModal from "./components/ThoughtOfDayModal";
 import DynamicBackground, { TimeOfDay, getTimeOfDayLabel } from "./components/DynamicBackground";
 import SoundscapeDock from "./components/SoundscapeDock";
+import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -68,6 +69,7 @@ export default function App() {
   const [showThoughtModal, setShowThoughtModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [showWorkspaceDrawer, setShowWorkspaceDrawer] = useState(false);
   
   // Customization Settings
   const [colorTheme, setColorTheme] = useState<VisualizerTheme>(() => {
@@ -273,6 +275,7 @@ export default function App() {
       )}
 
       {/* High Tech Modals */}
+      <WorkspaceDrawer isOpen={showWorkspaceDrawer} onClose={() => setShowWorkspaceDrawer(false)} />
       <MorningBriefingModal isOpen={showBriefing} onClose={() => setShowBriefing(false)} />
       <MemoryDrawer 
         isOpen={showMemoryDrawer} 
@@ -307,95 +310,13 @@ export default function App() {
             H
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-serif font-semibold tracking-wide text-white">Heer</h1>
-              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
-                v2.5 AI WIFE
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30 flex items-center gap-1 shadow-sm" title="Google Search Grounding Active for 100% accurate world knowledge">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                POWER SEARCH
-              </span>
-              <span 
-                onClick={() => setShowSettings(true)}
-                className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-mono border border-white/10 cursor-pointer transition-all"
-                title="Click to adjust Time-of-Day Atmosphere"
-              >
-                <span>{getTimeOfDayLabel(timeOfDayMode).icon}</span>
-                <span>{getTimeOfDayLabel(timeOfDayMode).label.split(" ")[0]}</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-white/50 hidden sm:block">Dedicated Companion for Kaushik</p>
+            <h1 className="text-xl font-serif font-semibold tracking-wide text-white">Heer</h1>
+            <p className="text-[11px] text-white/50 hidden sm:block">AI Voice Companion for Kaushik</p>
           </div>
         </div>
 
-        {/* Header Soundscape & High-Tech Quick Actions */}
+        {/* Minimal Mute/Audio Control */}
         <div className="flex items-center gap-2">
-          <div className="hidden lg:block">
-            <SoundscapeDock />
-          </div>
-
-          <button
-            onClick={() => setShowBriefing(true)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono"
-            title="Morning Briefing"
-          >
-            <Sun className="w-4 h-4 text-amber-300" />
-            <span className="hidden sm:inline">Briefing</span>
-          </button>
-
-          <button
-            onClick={() => setShowThoughtModal(true)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 transition-all border border-amber-500/30 text-amber-200 flex items-center gap-1.5 text-xs font-mono shadow-sm"
-            title="Aaj Ka Vichar — Thought of the Day"
-          >
-            <Flame className="w-4 h-4 text-amber-400 fill-amber-400/30" />
-            <span className="hidden sm:inline">Vichar</span>
-          </button>
-
-          <button
-            onClick={() => setShowMemoryDrawer(true)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono"
-            title="Memory Bank"
-          >
-            <Brain className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">Memory</span>
-          </button>
-
-          <button
-            onClick={() => setShowChatHistory(!showChatHistory)}
-            className={`p-2 rounded-xl transition-all border border-white/10 text-white/80 flex items-center gap-1.5 text-xs font-mono ${
-              showChatHistory ? "bg-cyan-500/30 border-cyan-400 text-cyan-200" : "bg-white/5 hover:bg-white/10"
-            }`}
-            title="Chat History Log"
-          >
-            <MessageSquare className="w-4 h-4 text-pink-400" />
-            <span className="hidden sm:inline">Log</span>
-          </button>
-
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 text-white/80"
-            title="Settings & HUD Theme"
-          >
-            <Sliders className="w-4 h-4" />
-          </button>
-
-          {messages.length > 0 && (
-            <button
-              onClick={() => {
-                if (confirm("Are you sure you want to clear chat history, Kaushik?")) {
-                  setMessages([]);
-                  resetHeerSession();
-                }
-              }}
-              className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-              title="Clear Chat History"
-            >
-              <Trash2 size={16} className="opacity-70" />
-            </button>
-          )}
-
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
@@ -513,40 +434,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Footer Controls & Quick Automation Dock */}
+      {/* Footer Controls */}
       <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-5 md:pb-7 z-20 shrink-0 gap-3">
-        
-        {/* Quick Action Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full px-4 scrollbar-hide">
-          <button
-            onClick={() => handleTextCommand("Give me a quick morning update")}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <Sun className="w-3.5 h-3.5 text-amber-300" /> Morning Update
-          </button>
-          
-          <button
-            onClick={() => handleTextCommand("Play soothing ambient music on YouTube")}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <Youtube className="w-3.5 h-3.5 text-red-400" /> Play Focus Music
-          </button>
-
-          <button
-            onClick={() => handleTextCommand("Open WhatsApp")}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp
-          </button>
-
-          <button
-            onClick={() => setShowMemoryDrawer(true)}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 border border-white/10 text-xs font-mono text-white/80 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <Brain className="w-3.5 h-3.5 text-purple-400" /> Save Note
-          </button>
-        </div>
-
         {/* Text Input Drawer */}
         <AnimatePresence>
           {showTextInput && (
