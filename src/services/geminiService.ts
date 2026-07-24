@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getFormattedMemoriesForSystemInstruction, autoDetectAndSaveUserMemories, saveMemory } from "./memoryService";
+import { addScheduledReminder } from "./reminderService";
 import {
   fetchGoogleTasks,
   createGoogleTask,
@@ -119,6 +120,25 @@ const manageGmailDeclaration = {
   }
 };
 
+const scheduleReminderDeclaration = {
+  name: "schedule_reminder",
+  description: "Schedule a time-based reminder or alarm for Kaushik at a specific time (e.g., '5 baje', '5:00 PM', 'in 10 minutes').",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      timeStr: {
+        type: Type.STRING,
+        description: "The time or duration expression (e.g., '5 baje', '5:00 PM', '17:00', 'in 10 minutes')."
+      },
+      reminderText: {
+        type: Type.STRING,
+        description: "What to remind Kaushik about (e.g. 'Meeting with team', 'Take medicine', 'Call Mom')."
+      }
+    },
+    required: ["timeStr", "reminderText"]
+  }
+};
+
 let chatSession: any = null;
 
 export function resetHeerSession() {
@@ -179,6 +199,7 @@ export async function getHeerResponse(
           {
             functionDeclarations: [
               saveMemoryDeclaration,
+              scheduleReminderDeclaration,
               manageGoogleTasksDeclaration,
               manageGoogleCalendarDeclaration,
               manageGoogleContactsDeclaration,
@@ -198,6 +219,12 @@ export async function getHeerResponse(
           const args = call.args as any;
           if (args && args.text) {
             saveMemory(args.text, args.category || "note");
+          }
+        } else if (call.name === "schedule_reminder") {
+          const args = call.args as any;
+          if (args && args.timeStr && args.reminderText) {
+            const reminder = addScheduledReminder(args.timeStr, args.reminderText);
+            toolResultsSummary += `\n[⏰ Reminder Set: "${reminder.reminderText}" scheduled for ${reminder.displayTimeStr}]`;
           }
         } else if (call.name === "manage_google_tasks") {
           const args = call.args as any;

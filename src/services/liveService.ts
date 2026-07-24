@@ -1,6 +1,7 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { processCommand } from "./commandService";
 import { getFormattedMemoriesForSystemInstruction, saveMemory } from "./memoryService";
+import { triggerHaptic } from "../utils/haptics";
 
 const baseSystemInstruction = `Your name is Heer. You are Kaushik's intelligent, highly knowledgeable, caring, and respectful Indian AI companion.
 
@@ -299,6 +300,7 @@ export class LiveSessionManager {
         if (this.playbackContext && this.playbackContext.currentTime >= this.nextPlayTime - 0.1) {
           this.isPlaying = false;
           this.onStateChange("listening");
+          triggerHaptic("speaking_finished");
         }
       };
     } catch (e) {
@@ -353,6 +355,7 @@ export class LiveSessionManager {
   }
 
   sendText(text: string) {
+    triggerHaptic("command");
     if (this.sessionPromise) {
       this.sessionPromise.then(session => {
         session.sendRealtimeInput({ text });

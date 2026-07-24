@@ -12,7 +12,13 @@ import ThoughtOfDayModal from "./components/ThoughtOfDayModal";
 import DynamicBackground, { TimeOfDay, getTimeOfDayLabel } from "./components/DynamicBackground";
 import SoundscapeDock from "./components/SoundscapeDock";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
+import { AlarmReminderModal } from "./components/AlarmReminderModal";
+import { IncomingCallModal } from "./components/IncomingCallModal";
+import { IncomingCall, getRandomCaller } from "./services/callService";
+import { checkAndTriggerPendingReminders, ScheduledReminder } from "./services/reminderService";
+import { registerServiceWorker, requestNotificationPermission, showSystemNotification, getNotificationPermissionState } from "./services/notificationService";
 import { playPCM } from "./utils/audioUtils";
+import { triggerHaptic } from "./utils/haptics";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
@@ -70,6 +76,104 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showWorkspaceDrawer, setShowWorkspaceDrawer] = useState(false);
+  const [activeAlarm, setActiveAlarm] = useState<ScheduledReminder | null>(null);
+  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
+
+  const handleSimulateIncomingCall = () => {
+    triggerHaptic("button_tap");
+    const caller = getRandomCaller();
+    setIncomingCall({
+      id: Date.now().toString(),
+      callerName: caller.callerName,
+      callerNumber: caller.callerNumber,
+      timestamp: new Date().toISOString(),
+      status: "ringing",
+    });
+  };
+
+  const handleAcceptCall = () => {
+    triggerHaptic("success");
+    if (incomingCall) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "heer",
+          text: `[📞 Call Answered] Kaushik Ji, aapne ${incomingCall.callerName} ka call utha liya hai.`,
+        },
+      ]);
+    }
+    setIncomingCall(null);
+  };
+
+  const handleDeclineCall = () => {
+    triggerHaptic("button_tap");
+    if (incomingCall) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "heer",
+          text: `[📵 Call Declined] ${incomingCall.callerName} ka call disconnect kar diya gaya hai.`,
+        },
+      ]);
+    }
+    setIncomingCall(null);
+  };
+
+  const handleHeerGreetCall = (greetingText: string) => {
+    if (incomingCall) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "heer",
+          text: `[🤖 Heer Assistant Handled Call for ${incomingCall.callerName}]: "${greetingText}"`,
+        },
+      ]);
+    }
+  };
+
+  // Service Worker & Notification Permission Registration on Mount
+  useEffect(() => {
+    registerServiceWorker();
+    requestNotificationPermission();
+  }, []);
+
+  // Background Clock Alarm Listener: Checks scheduled reminders every 3 seconds
+  useEffect(() => {
+    const alarmInterval = setInterval(async () => {
+      const due = checkAndTriggerPendingReminders();
+      if (due.length > 0) {
+        const reminder = due[0];
+        setActiveAlarm(reminder);
+        triggerHaptic("success");
+
+        const reminderMsg = `Kaushik Ji, ${reminder.displayTimeStr} baj gaye hain! Maine aapko yaad dilane ke liye bola tha: "${reminder.reminderText}"`;
+        
+        // Trigger System Web Notification (Works even if tab/app is minimized in background)
+        showSystemNotification("⏰ Heer AI Reminder", `Kaushik Ji: ${reminder.reminderText}`);
+
+        setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "heer", text: reminderMsg }]);
+
+        if (!isMuted) {
+          setAppState("speaking");
+          try {
+            const base64Audio = await getHeerAudio(reminderMsg);
+            if (base64Audio) {
+              await playPCM(base64Audio);
+            }
+          } catch (e) {
+            console.error("Alarm audio error:", e);
+          } finally {
+            setAppState("idle");
+          }
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(alarmInterval);
+  }, [isMuted]);
   
   // Customization Settings
   const [colorTheme, setColorTheme] = useState<VisualizerTheme>(() => {
@@ -148,6 +252,7 @@ export default function App() {
       return;
     }
 
+    triggerHaptic("command");
     setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "user", text: finalTranscript }]);
     
     // If live session is active, send text through it
@@ -207,6 +312,7 @@ export default function App() {
   }, []);
 
   const toggleListening = async () => {
+    triggerHaptic("button_tap");
     if (isSessionActive) {
       setIsSessionActive(false);
       if (liveSessionRef.current) {
@@ -275,6 +381,13 @@ export default function App() {
       )}
 
       {/* High Tech Modals */}
+      <IncomingCallModal
+        incomingCall={incomingCall}
+        onAccept={handleAcceptCall}
+        onDecline={handleDeclineCall}
+        onHeerGreet={handleHeerGreetCall}
+      />
+      <AlarmReminderModal activeAlarm={activeAlarm} onDismiss={() => setActiveAlarm(null)} />
       <WorkspaceDrawer isOpen={showWorkspaceDrawer} onClose={() => setShowWorkspaceDrawer(false)} />
       <MorningBriefingModal isOpen={showBriefing} onClose={() => setShowBriefing(false)} />
       <MemoryDrawer 
@@ -315,7 +428,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Minimal Mute/Audio Control */}
+        {/* Minimal Audio Control */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsMuted(!isMuted)}

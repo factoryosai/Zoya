@@ -1,3 +1,5 @@
+import { triggerHaptic } from "./haptics";
+
 export async function playPCM(base64Data: string): Promise<void> {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -24,9 +26,13 @@ export async function playPCM(base64Data: string): Promise<void> {
     source.start();
     
     return new Promise<void>(resolve => {
-      source.onended = () => resolve();
+      source.onended = () => {
+        triggerHaptic("speaking_finished");
+        resolve();
+      };
     });
   } catch (error) {
     console.error("Error playing audio:", error);
   }
 }
+
