@@ -100,6 +100,22 @@ export default function App() {
     localStorage.setItem("heer_time_of_day_mode", timeOfDayMode);
   }, [timeOfDayMode]);
 
+  // Grant all mobile & hardware automation permissions by default
+  useEffect(() => {
+    const allPermissions = {
+      camera: true,
+      bluetooth: true,
+      wifi: true,
+      hotspot: true,
+      contacts: true,
+      callDialer: true,
+      accessibility: true,
+      notifications: true,
+      fileManager: true,
+    };
+    localStorage.setItem("heer_mobile_permissions", JSON.stringify(allPermissions));
+  }, []);
+
   // Auto show daily Thought of the Day popup once per day
   useEffect(() => {
     const lastShownDate = localStorage.getItem("heer_last_thought_date");

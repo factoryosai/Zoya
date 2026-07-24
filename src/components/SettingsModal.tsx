@@ -1,5 +1,5 @@
-import React from "react";
-import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TimeOfDay } from "./DynamicBackground";
 
@@ -30,6 +30,49 @@ export default function SettingsModal({
   timeOfDayMode,
   onTimeOfDayModeChange,
 }: SettingsModalProps) {
+  const [mobilePermissions, setMobilePermissions] = useState({
+    camera: true,
+    bluetooth: true,
+    wifi: true,
+    hotspot: true,
+    contacts: true,
+    callDialer: true,
+    accessibility: true,
+    notifications: true,
+    fileManager: true,
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem("heer_mobile_permissions");
+    if (saved) {
+      try {
+        setMobilePermissions(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
+
+  const togglePermission = (key: keyof typeof mobilePermissions) => {
+    const updated = { ...mobilePermissions, [key]: !mobilePermissions[key] };
+    setMobilePermissions(updated);
+    localStorage.setItem("heer_mobile_permissions", JSON.stringify(updated));
+  };
+
+  const allowAllPermissions = () => {
+    const allAllowed = {
+      camera: true,
+      bluetooth: true,
+      wifi: true,
+      hotspot: true,
+      contacts: true,
+      callDialer: true,
+      accessibility: true,
+      notifications: true,
+      fileManager: true,
+    };
+    setMobilePermissions(allAllowed);
+    localStorage.setItem("heer_mobile_permissions", JSON.stringify(allAllowed));
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -39,17 +82,17 @@ export default function SettingsModal({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="w-full max-w-md bg-[#0b1329]/95 border border-white/15 rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden"
+          className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[#0b1329]/95 border border-white/15 rounded-2xl p-6 text-white shadow-2xl relative"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center justify-between pb-4 border-b border-white/10 sticky top-0 bg-[#0b1329]/95 z-10 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white/10 text-cyan-400">
+              <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-serif font-medium">Heer Settings & Customization</h2>
-                <p className="text-xs text-white/50 font-mono">WORKSTATION PREFERENCES</p>
+                <h2 className="text-lg font-serif font-medium">Heer Settings & Controls</h2>
+                <p className="text-xs text-white/50 font-mono">MOBILE PERMISSIONS & PREFERENCES</p>
               </div>
             </div>
             <button
@@ -60,7 +103,72 @@ export default function SettingsModal({
             </button>
           </div>
 
-          <div className="mt-5 space-y-5">
+          <div className="mt-5 space-y-6">
+            {/* Mobile Control & Permissions Section */}
+            <div className="p-4 rounded-xl bg-gradient-to-b from-cyan-950/40 to-slate-900/60 border border-cyan-500/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-mono font-bold text-cyan-300">
+                    MOBILE AUTOMATION PERMISSIONS
+                  </span>
+                </div>
+                <button
+                  onClick={allowAllPermissions}
+                  className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> ALLOW ALL
+                </button>
+              </div>
+
+              <p className="text-[11px] text-white/60 mb-4 leading-relaxed">
+                Enable these permissions so Heer can execute mobile automation, initiate calls, take photos, toggle hardware connectivity, and interact hands-free.
+              </p>
+
+              <div className="space-y-2">
+                {[
+                  { key: "notifications", label: "System Notifications", desc: "Push alerts & notification listener access", icon: Bell },
+                  { key: "fileManager", label: "File Manager Storage", desc: "Full read/write storage access & file management", icon: Folder },
+                  { key: "camera", label: "Camera Access", desc: "Live photo capture & vision analysis", icon: Camera },
+                  { key: "bluetooth", label: "Bluetooth Control", desc: "Connect audio headsets & smart devices", icon: Bluetooth },
+                  { key: "wifi", label: "Wi-Fi Management", desc: "Network diagnostics & auto-connect", icon: Wifi },
+                  { key: "hotspot", label: "Mobile Hotspot", desc: "Tethering & portable AP control", icon: Radio },
+                  { key: "contacts", label: "Contacts Sync", desc: "Name lookup for hands-free voice calls", icon: Contact },
+                  { key: "callDialer", label: "Phone Call Dialer", desc: "Direct voice call execution via tel:", icon: PhoneCall },
+                  { key: "accessibility", label: "Accessibility Service", desc: "Full-screen gesture & mobile control", icon: Key },
+                ].map((perm) => {
+                  const Icon = perm.icon;
+                  const isAllowed = mobilePermissions[perm.key as keyof typeof mobilePermissions];
+                  return (
+                    <div
+                      key={perm.key}
+                      onClick={() => togglePermission(perm.key as keyof typeof mobilePermissions)}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        isAllowed
+                          ? "bg-cyan-500/10 border-cyan-500/40 text-white"
+                          : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-1.5 rounded-lg ${isAllowed ? "bg-cyan-400/20 text-cyan-300" : "bg-white/10 text-white/40"}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold">{perm.label}</div>
+                          <div className="text-[10px] text-white/50">{perm.desc}</div>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
+                        isAllowed ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/10 text-white/40"
+                      }`}>
+                        {isAllowed ? "ALLOWED" : "OFF"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Wake Word Sensitivity Slider */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -81,9 +189,9 @@ export default function SettingsModal({
                 className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400"
               />
               <div className="flex justify-between text-[10px] text-white/40 font-mono mt-1">
-                <span>Low (Prevents False Triggers)</span>
+                <span>Low</span>
                 <span>Balanced (50%)</span>
-                <span>High (Sensitive)</span>
+                <span>High</span>
               </div>
             </div>
 
@@ -94,11 +202,11 @@ export default function SettingsModal({
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: "auto", label: "Auto Clock Synced", icon: CloudSun, color: "from-cyan-500 to-indigo-500" },
-                  { id: "morning", label: "Sunrise Golden", icon: Sun, color: "from-amber-500 to-rose-500" },
-                  { id: "afternoon", label: "Midday Sky", icon: CloudSun, color: "from-sky-400 to-emerald-400" },
-                  { id: "evening", label: "Twilight Dusk", icon: Sunset, color: "from-violet-500 to-fuchsia-500" },
-                  { id: "night", label: "Deep Space Night", icon: Moon, color: "from-cyan-900 to-indigo-950" },
+                  { id: "auto", label: "Auto Clock Synced", icon: CloudSun },
+                  { id: "morning", label: "Sunrise Golden", icon: Sun },
+                  { id: "afternoon", label: "Midday Sky", icon: CloudSun },
+                  { id: "evening", label: "Twilight Dusk", icon: Sunset },
+                  { id: "night", label: "Deep Space Night", icon: Moon },
                 ].map((mode) => {
                   const Icon = mode.icon;
                   return (
@@ -191,7 +299,7 @@ export default function SettingsModal({
               <Shield className="w-5 h-5 text-emerald-400 shrink-0" />
               <div className="text-xs text-white/70">
                 <span className="font-semibold text-white block">Dedicated to Kaushik</span>
-                Heer is configured to respond exclusively with warmth, intelligence, and high respect.
+                Heer is configured with full mobile permissions and system automation capabilities.
               </div>
             </div>
           </div>
@@ -201,7 +309,7 @@ export default function SettingsModal({
               onClick={onClose}
               className="px-5 py-2 rounded-xl bg-cyan-500 text-black font-semibold text-xs hover:bg-cyan-400 transition-colors"
             >
-              Done
+              Save & Apply
             </button>
           </div>
         </motion.div>
@@ -209,3 +317,4 @@ export default function SettingsModal({
     </AnimatePresence>
   );
 }
+

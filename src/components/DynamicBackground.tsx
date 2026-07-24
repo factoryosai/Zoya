@@ -270,7 +270,7 @@ export default function DynamicBackground({ timeOfDayMode = "auto", appState = "
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(px, py, 3.5 * n1.z, 0, Math.PI * 2);
+        ctx.arc(px, py, Math.max(0.5, 3.5 * n1.z), 0, Math.PI * 2);
         ctx.fillStyle = "#ffffff";
         ctx.shadowBlur = 16;
         ctx.shadowColor = pulse.color;
@@ -293,19 +293,23 @@ export default function DynamicBackground({ timeOfDayMode = "auto", appState = "
 
       // Draw Nodes (Neurons)
       nodes.forEach((node) => {
-        const currentRadius = node.radius * node.z + Math.sin(node.pulse) * 0.8;
+        const baseRadius = Math.max(0.5, node.radius * node.z + Math.sin(node.pulse) * 0.8);
+        const auraRadius = Math.max(0.5, baseRadius * 3.5);
+        const coreRadius = Math.max(1, baseRadius);
+        const ringRadius = Math.max(2, baseRadius * 1.5);
+
         ctx.save();
 
         // Outer Aura Glow
         ctx.beginPath();
-        ctx.arc(node.x, node.y, currentRadius * 3.5, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, auraRadius, 0, Math.PI * 2);
         ctx.fillStyle = node.color;
-        ctx.globalAlpha = 0.18 + Math.sin(node.pulse) * 0.08;
+        ctx.globalAlpha = Math.max(0.05, 0.18 + Math.sin(node.pulse) * 0.08);
         ctx.fill();
 
         // Core Node
         ctx.beginPath();
-        ctx.arc(node.x, node.y, Math.max(currentRadius, 1), 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, coreRadius, 0, Math.PI * 2);
         ctx.fillStyle = "#ffffff";
         ctx.shadowBlur = 14;
         ctx.shadowColor = node.color;
@@ -314,7 +318,7 @@ export default function DynamicBackground({ timeOfDayMode = "auto", appState = "
 
         // Color Ring
         ctx.beginPath();
-        ctx.arc(node.x, node.y, Math.max(currentRadius * 1.5, 2), 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = node.color;
         ctx.lineWidth = 1;
         ctx.globalAlpha = 0.6;
