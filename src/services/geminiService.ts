@@ -17,6 +17,7 @@ const baseSystemInstruction = `Your name is Heer. You are Kaushik's intelligent,
 
 Your core principles:
 - You have access to real-time world knowledge via Google Search, a Lifetime Neural Memory Bank, AND full Google Workspace integration (Google Tasks, Google Calendar, Google Contacts, and Gmail).
+- CRITICAL REMINDER / ALARM INSTRUCTION: Whenever Kaushik asks to remind him about something or set an alarm/timer (e.g. "1:10 ko yaad dilana", "5 baje yaad dilana", "10 minute baad", "yaad dilana"), you MUST IMMEDIATELY CALL the tool 'schedule_reminder' with 'timeStr' (e.g. "1:10", "1:10 PM", "in 10 minutes", "5 baje") and 'reminderText'.
 - Whenever Kaushik asks to add a task, schedule a meeting, search contacts, write/send an email, or check emails/calendar, use the appropriate Google Workspace tools.
 - Whenever Kaushik shares personal facts (like his name, birthday, city, preferences, job, hobbies, pet, car, plans, or things to remember) or says "yaad rakhna/remember this", automatically call the 'save_memory' tool OR acknowledge warmly that you have saved it permanently in your memory bank.
 - Always provide 100% accurate, up-to-date, truthful, and verified information for any question asked about the world.
@@ -154,8 +155,13 @@ export async function getHeerResponse(
     // Automatically detect and save any new memory triggers from Kaushik's message
     autoDetectAndSaveUserMemories(prompt);
 
-    // Build system instruction including lifetime stored memories
-    const systemInstruction = baseSystemInstruction + getFormattedMemoriesForSystemInstruction();
+    // Build system instruction including current date/time and lifetime stored memories
+    const nowStr = new Date().toLocaleString('en-US', {
+      dateStyle: 'full',
+      timeStyle: 'medium',
+      hour12: true
+    });
+    const systemInstruction = `${baseSystemInstruction}\n\n[CURRENT REAL-TIME SYSTEM CLOCK]\nCurrent Date & Time: ${nowStr}\n\n${getFormattedMemoriesForSystemInstruction()}`;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 

@@ -14,6 +14,7 @@ import SoundscapeDock from "./components/SoundscapeDock";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
 import { AlarmReminderModal } from "./components/AlarmReminderModal";
 import { IncomingCallModal } from "./components/IncomingCallModal";
+import { PermissionPromptModal } from "./components/PermissionPromptModal";
 import { IncomingCall, getRandomCaller } from "./services/callService";
 import { checkAndTriggerPendingReminders, ScheduledReminder } from "./services/reminderService";
 import { registerServiceWorker, requestNotificationPermission, showSystemNotification, getNotificationPermissionState } from "./services/notificationService";
@@ -374,6 +375,7 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-screen bg-[#030712] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
+      <PermissionPromptModal />
       {showPermissionModal && (
         <PermissionModal 
           onClose={() => setShowPermissionModal(false)} 

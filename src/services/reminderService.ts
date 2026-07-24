@@ -27,53 +27,116 @@ export function saveScheduledReminders(reminders: ScheduledReminder[]): void {
 }
 
 /**
- * Parses time expressions like "5 baje", "5:00 PM", "17:00", "in 10 minutes"
+ * Calculates exact target Date for expressions like "1:10", "1 bajke 10 minute", "5 baje", "in 10 minutes", "10 min baad"
  */
-export function addScheduledReminder(timeExpr: string, reminderText: string): ScheduledReminder {
+export function parseTimeToTargetDate(timeExpr: string): Date {
   const now = new Date();
-  let targetDate = new Date();
-
   const lowerExpr = timeExpr.toLowerCase().trim();
 
-  // Relative minutes match: "in 10 minutes", "10 min"
-  const relMinMatch = lowerExpr.match(/(?:in\s+)?(\d+)\s*(?:min|minute|minutes)/);
-  if (relMinMatch) {
-    const mins = parseInt(relMinMatch[1], 10);
-    targetDate = new Date(now.getTime() + mins * 60 * 1000);
-  } else {
-    // Hour parse match: e.g. "5 baje", "5:00 pm", "17:00", "5"
-    let hour = 0;
-    let minute = 0;
-    let isPM = lowerExpr.includes("pm") || lowerExpr.includes("shaam") || lowerExpr.includes("raat");
+  // Check if expression is explicit clock time (contains bajke, baj kar, baje, or colon/period formatted time)
+  const isClockTimeExpression = /baj\s*k[ae]|baj\s*kar|baje|\d{1,2}[:.]\d{2}/i.test(lowerExpr);
 
-    const timeMatch = lowerExpr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje)?/);
-    if (timeMatch) {
-      hour = parseInt(timeMatch[1], 10);
-      minute = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-      
-      // If "5 baje" in evening or explicitly 1 to 11 without AM/PM, default 5 baje -> 17:00 if current time < 17:00 or if evening implied
-      if (!lowerExpr.includes("am") && !lowerExpr.includes("pm")) {
-        if (hour < 12 && (now.getHours() >= 12 || hour <= 8)) {
-          // If e.g. user says 5 baje, and it's daytime, assume 5 PM (17:00)
-          if (hour <= 11) isPM = true;
-        }
-      }
-
-      if (isPM && hour < 12) hour += 12;
-      if (lowerExpr.includes("am") && hour === 12) hour = 0;
-
-      targetDate.setHours(hour, minute, 0, 0);
-
-      // If target time is earlier today than current time, schedule for tomorrow
-      if (targetDate.getTime() <= now.getTime()) {
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
-    } else {
-      // Default to 1 hour from now if unparseable
-      targetDate = new Date(now.getTime() + 60 * 60 * 1000);
+  if (!isClockTimeExpression) {
+    const relMinMatch = lowerExpr.match(/(\d+)\s*(?:min|minute|minutes)/i);
+    if (relMinMatch) {
+      const mins = parseInt(relMinMatch[1], 10);
+      return new Date(now.getTime() + mins * 60 * 1000);
     }
   }
 
+  let hour = 0;
+  let minute = 0;
+  let matched = false;
+
+  const explicitAM = lowerExpr.includes("am") || lowerExpr.includes("subah") || lowerExpr.includes("morning");
+  const explicitPM = lowerExpr.includes("pm") || lowerExpr.includes("shaam") || lowerExpr.includes("raat") || lowerExpr.includes("dopahar") || lowerExpr.includes("evening") || lowerExpr.includes("night");
+
+  // Pattern A: "1 bajke 10 minute", "1 baj kar 10 min", "1 baje 10 min"
+  const bajkeMatch = lowerExpr.match(/(\d{1,2})\s*(?:baj\s*k[ae]|baj\s*kar|baje)?\s*(\d{1,2})?/);
+
+  // Pattern B: "1:10", "01:10", "1.10"
+  const colonMatch = lowerExpr.match(/(\d{1,2})[:.](\d{2})/);
+
+  if (colonMatch) {
+    hour = parseInt(colonMatch[1], 10);
+    minute = parseInt(colonMatch[2], 10);
+    matched = true;
+  } else if (bajkeMatch && (lowerExpr.includes("baj") || bajkeMatch[2])) {
+    hour = parseInt(bajkeMatch[1], 10);
+    minute = bajkeMatch[2] ? parseInt(bajkeMatch[2], 10) : 0;
+    matched = true;
+  } else if (bajkeMatch) {
+    hour = parseInt(bajkeMatch[1], 10);
+    minute = 0;
+    matched = true;
+  }
+
+  if (!matched) {
+    // Default fallback: 1 hour from now
+    return new Date(now.getTime() + 60 * 60 * 1000);
+  }
+
+  // Handle explicit AM
+  if (explicitAM) {
+    if (hour === 12) hour = 0;
+    const target = new Date(now);
+    target.setHours(hour, minute, 0, 0);
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+    return target;
+  }
+
+  // Handle explicit PM
+  if (explicitPM) {
+    if (hour < 12) hour += 12;
+    const target = new Date(now);
+    target.setHours(hour, minute, 0, 0);
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+    return target;
+  }
+
+  // Unspecified AM/PM (e.g., "1:10", "1 bajke 10 min", "5 baje")
+  // Evaluate future candidates for AM/PM today and tomorrow, picking the closest upcoming time
+  const candidates: Date[] = [];
+  const hAM = hour === 12 ? 0 : hour;
+  const hPM = hour < 12 ? hour + 12 : hour;
+
+  // Candidate 1: AM Today
+  const candAMToday = new Date(now);
+  candAMToday.setHours(hAM, minute, 0, 0);
+  if (candAMToday.getTime() > now.getTime()) candidates.push(candAMToday);
+
+  // Candidate 2: PM Today
+  const candPMToday = new Date(now);
+  candPMToday.setHours(hPM, minute, 0, 0);
+  if (candPMToday.getTime() > now.getTime()) candidates.push(candPMToday);
+
+  // Candidate 3: AM Tomorrow
+  const candAMTomorrow = new Date(now);
+  candAMTomorrow.setDate(candAMTomorrow.getDate() + 1);
+  candAMTomorrow.setHours(hAM, minute, 0, 0);
+  if (candAMTomorrow.getTime() > now.getTime()) candidates.push(candAMTomorrow);
+
+  // Candidate 4: PM Tomorrow
+  const candPMTomorrow = new Date(now);
+  candPMTomorrow.setDate(candPMTomorrow.getDate() + 1);
+  candPMTomorrow.setHours(hPM, minute, 0, 0);
+  if (candPMTomorrow.getTime() > now.getTime()) candidates.push(candPMTomorrow);
+
+  // Sort ascending by time difference from now
+  candidates.sort((a, b) => a.getTime() - b.getTime());
+
+  return candidates.length > 0 ? candidates[0] : new Date(now.getTime() + 60 * 60 * 1000);
+}
+
+/**
+ * Adds a new scheduled reminder for Kaushik
+ */
+export function addScheduledReminder(timeExpr: string, reminderText: string): ScheduledReminder {
+  const targetDate = parseTimeToTargetDate(timeExpr);
   const displayTimeStr = targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const reminder: ScheduledReminder = {
@@ -103,8 +166,8 @@ export function checkAndTriggerPendingReminders(): ScheduledReminder[] {
   const updated = reminders.map(r => {
     if (!r.triggered) {
       const targetTime = new Date(r.targetTimeISO).getTime();
-      // If time has arrived or passed within 15 minutes
-      if (nowTime >= targetTime && (nowTime - targetTime) <= 15 * 60 * 1000) {
+      // Trigger if time reached or passed within last 30 minutes
+      if (nowTime >= targetTime && (nowTime - targetTime) <= 30 * 60 * 1000) {
         r.triggered = true;
         dueToTrigger.push(r);
       }
@@ -123,3 +186,4 @@ export function deleteReminder(id: string): void {
   const reminders = getScheduledReminders().filter(r => r.id !== id);
   saveScheduledReminders(reminders);
 }
+
