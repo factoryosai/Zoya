@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2, Brain, Bookmark, Clock, Heart, Sparkles } from "lucide-react";
+import { X, Plus, Trash2, Brain, Bookmark, Clock, Heart, Sparkles, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-
-export interface MemoryItem {
-  id: string;
-  category: "reminder" | "note" | "preference" | "date";
-  text: string;
-  createdAt: string;
-}
+import { getMemories, saveMemory, deleteMemory, MemoryItem } from "../services/memoryService";
 
 interface MemoryDrawerProps {
   isOpen: boolean;
@@ -16,58 +10,32 @@ interface MemoryDrawerProps {
 }
 
 export default function MemoryDrawer({ isOpen, onClose, onSpeakText }: MemoryDrawerProps) {
-  const [memories, setMemories] = useState<MemoryItem[]>(() => {
-    const saved = localStorage.getItem("heer_neural_memories");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse memories", e);
-      }
-    }
-    return [
-      {
-        id: "1",
-        category: "preference",
-        text: "Kaushik prefers coffee with less sugar and warm milk.",
-        createdAt: "Saved by Heer",
-      },
-      {
-        id: "2",
-        category: "note",
-        text: "Heer is Kaushik's loyal, calm, and intelligent AI companion.",
-        createdAt: "Saved by Heer",
-      },
-    ];
-  });
-
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [newText, setNewText] = useState("");
   const [category, setCategory] = useState<MemoryItem["category"]>("note");
 
   useEffect(() => {
-    localStorage.setItem("heer_neural_memories", JSON.stringify(memories));
-  }, [memories]);
+    if (isOpen) {
+      setMemories(getMemories());
+    }
+  }, [isOpen]);
 
   const handleAddMemory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newText.trim()) return;
 
-    const newMemory: MemoryItem = {
-      id: Date.now().toString(),
-      category,
-      text: newText.trim(),
-      createdAt: new Date().toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setMemories((prev) => [newMemory, ...prev]);
+    const textToSave = newText.trim();
+    const updated = saveMemory(textToSave, category);
+    setMemories(updated);
     setNewText("");
     if (onSpeakText) {
-      onSpeakText(`Ji Kaushik, main iss baat ko hamesha yaad rakhungi: "${newMemory.text}"`);
+      onSpeakText(`Ji Kaushik, main iss baat ko hamesha life long yaad rakhungi: "${textToSave}"`);
     }
   };
 
   const handleDelete = (id: string) => {
-    setMemories((prev) => prev.filter((m) => m.id !== id));
+    const updated = deleteMemory(id);
+    setMemories(updated);
   };
 
   if (!isOpen) return null;
@@ -94,7 +62,9 @@ export default function MemoryDrawer({ isOpen, onClose, onSpeakText }: MemoryDra
                 </div>
                 <div>
                   <h2 className="text-lg font-serif font-medium tracking-wide">Heer's Memory Bank</h2>
-                  <p className="text-xs text-cyan-300/60 font-mono">NEURAL MEMORY STORAGE</p>
+                  <p className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> LIFETIME PERSISTENT MEMORY
+                  </p>
                 </div>
               </div>
               <button

@@ -281,8 +281,8 @@ export default function App() {
         onTimeOfDayModeChange={setTimeOfDayMode}
       />
 
-      {/* Dynamic Cinematic Time-of-Day Background */}
-      <DynamicBackground timeOfDayMode={timeOfDayMode} />
+      {/* Full-Screen Glowing 3D Neural Matrix Background */}
+      <DynamicBackground timeOfDayMode={timeOfDayMode} appState={appState} />
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-4 md:px-8 py-4">
@@ -295,6 +295,10 @@ export default function App() {
               <h1 className="text-xl font-serif font-semibold tracking-wide text-white">Heer</h1>
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
                 v2.5 AI WIFE
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30 flex items-center gap-1 shadow-sm" title="Google Search Grounding Active for 100% accurate world knowledge">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                POWER SEARCH
               </span>
               <span 
                 onClick={() => setShowSettings(true)}

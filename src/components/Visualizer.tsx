@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Maximize2, Minimize2, Volume2, Sparkles, Mic } from "lucide-react";
+import { Maximize2, Minimize2, Volume2, Sparkles, Mic, Brain } from "lucide-react";
 import { VisualizerTheme } from "./SettingsModal";
-import heerAvatar from "../assets/images/heer_avatar_1784820674617.jpg";
 
 type VisualizerState = "idle" | "listening" | "processing" | "speaking";
 
@@ -22,30 +21,30 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
     };
   };
 
-  const getAvatarPulse = () => {
+  const getOrbPulse = () => {
     if (state === "speaking") {
       return {
-        scale: [1, 1.04, 0.99, 1.03, 1],
-        y: [0, -2, 1, -1, 0],
-        transition: { duration: 0.45, repeat: Infinity, ease: "easeInOut" }
+        scale: [1, 1.08, 0.98, 1.06, 1],
+        y: [0, -3, 2, -1, 0],
+        transition: { duration: 0.4, repeat: Infinity, ease: "easeInOut" }
       };
     }
     if (state === "listening") {
       return {
-        scale: [1, 1.02, 1],
-        y: [0, -1, 0],
+        scale: [1, 1.05, 1],
+        y: [0, -2, 0],
         transition: { duration: 1.2, repeat: Infinity, ease: "easeInOut" }
       };
     }
     if (state === "processing") {
       return {
-        scale: [0.99, 1.01, 0.99],
+        scale: [0.98, 1.04, 0.98],
         transition: { duration: 0.8, repeat: Infinity, ease: "linear" }
       };
     }
     return {
-      scale: [1, 1.015, 1],
-      y: [0, -1.5, 0],
+      scale: [1, 1.03, 1],
+      y: [0, -2, 0],
       transition: { duration: 4, repeat: Infinity, ease: "easeInOut" }
     };
   };
@@ -89,7 +88,7 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
       {/* Ambient Outer Aura Glow */}
       <motion.div
-        animate={getAvatarPulse()}
+        animate={getOrbPulse()}
         className={`absolute rounded-full blur-[90px] transition-all duration-500 ${
           isExpanded ? "w-[480px] h-[480px] md:w-[600px] md:h-[600px]" : "w-[280px] h-[280px] md:w-[380px] md:h-[380px]"
         } ${theme.glow}`}
@@ -142,9 +141,9 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
         </div>
       )}
 
-      {/* Central Heer Live Talking Avatar Frame */}
+      {/* Central Futuristic AI Orb Core */}
       <motion.div
-        animate={getAvatarPulse()}
+        animate={getOrbPulse()}
         className={`relative z-10 rounded-full p-1 bg-gradient-to-tr from-cyan-500 via-violet-500 to-pink-500 shadow-2xl flex items-center justify-center pointer-events-auto transition-all duration-500 ${
           isExpanded ? "w-[300px] h-[300px] md:w-[420px] md:h-[420px]" : "w-[200px] h-[200px] md:w-[280px] md:h-[280px]"
         }`}
@@ -152,50 +151,36 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
           boxShadow: `0 0 50px ${theme.color}, inset 0 0 20px ${theme.color}`
         }}
       >
-        <div className="relative w-full h-full rounded-full overflow-hidden bg-slate-950 border-2 border-white/20 group">
-          {/* Avatar Image with Lip-Sync Movement */}
-          <motion.img
-            src={heerAvatar}
-            alt="Heer AI Avatar"
-            animate={
-              state === "speaking"
-                ? {
-                    scale: [1, 1.03, 1.01, 1.04, 1],
-                    y: [0, -2, 1, -1, 0],
-                    filter: [
-                      "brightness(1) contrast(1.05)",
-                      "brightness(1.08) contrast(1.08)",
-                      "brightness(1) contrast(1.05)"
-                    ]
-                  }
-                : { scale: 1, y: 0 }
-            }
-            transition={
-              state === "speaking"
-                ? { duration: 0.35, repeat: Infinity, ease: "easeInOut" }
-                : { duration: 0.5 }
-            }
-            className="w-full h-full object-cover object-top filter contrast-[1.05] brightness-[1.02]"
+        <div className="relative w-full h-full rounded-full overflow-hidden bg-slate-950/90 border-2 border-white/20 group flex items-center justify-center">
+          {/* Animated Futuristic Radial AI Plasma Core */}
+          <motion.div
+            animate={{
+              rotate: [0, 360],
+              scale: state === "speaking" ? [1, 1.12, 1] : [1, 1.05, 1],
+            }}
+            transition={{
+              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+              scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+            }}
+            className="absolute inset-2 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-400/30 via-violet-600/40 to-slate-950 blur-md"
           />
 
-          {/* Lip-Sync Talking Wave Overlay at mouth position */}
-          {state === "speaking" && (
+          {/* Central AI Emblem Monogram */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center">
             <motion.div
               animate={{
-                scaleY: [0.6, 1.3, 0.8, 1.4, 0.7],
-                opacity: [0.3, 0.7, 0.4, 0.8, 0.3]
+                scale: state === "speaking" ? [1, 1.15, 0.98, 1.1, 1] : [1, 1.05, 1],
               }}
-              transition={{ duration: 0.25, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-3 rounded-full bg-pink-400/30 blur-sm pointer-events-none"
-            />
-          )}
-
-          {/* Eye Blink Simulation Overlay */}
-          <motion.div
-            animate={{ opacity: [0, 0, 0.85, 0, 0] }}
-            transition={{ duration: 4, repeat: Infinity, times: [0, 0.94, 0.96, 0.98, 1] }}
-            className="absolute top-[34%] left-1/2 -translate-x-1/2 w-[65%] h-3 bg-[#1e2338]/90 blur-[1px] pointer-events-none"
-          />
+              transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+              className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-500 to-pink-500 p-0.5 shadow-xl flex items-center justify-center border border-white/30"
+            >
+              <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
+                <span className="text-2xl md:text-4xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-pink-300 to-amber-200">
+                  H
+                </span>
+              </div>
+            </motion.div>
+          </div>
 
           {/* Hologram Scanning Beam when Thinking */}
           {state === "processing" && (
@@ -209,7 +194,7 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
 
           {/* Bottom Live Audio Waveform when Speaking */}
           {state === "speaking" && (
-            <div className="absolute bottom-0 left-0 w-full h-14 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end justify-center gap-1.5 pb-2 px-6">
+            <div className="absolute bottom-0 left-0 w-full h-14 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end justify-center gap-1.5 pb-2 px-6 z-20">
               {[0.4, 0.8, 1, 0.6, 0.9, 0.5, 0.85, 0.3, 0.75, 0.55].map((_, i) => (
                 <motion.div
                   key={i}
@@ -231,8 +216,8 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
           {/* Full-Screen Avatar Expand/Contract Hover Button */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity border border-white/20"
-            title={isExpanded ? "Collapse View" : "Expand Live Avatar View"}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity border border-white/20 z-30"
+            title={isExpanded ? "Collapse View" : "Expand Live Visualizer View"}
           >
             {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -256,12 +241,13 @@ export default function Visualizer({ state, colorTheme = "violet" }: VisualizerP
               <Sparkles className="w-3 h-3 text-blue-400 animate-spin" /> SYNTHESIZING...
             </span>
           ) : (
-            <span>HEER LIVE AVATAR</span>
+            <span>HEER AI CORE</span>
           )}
         </div>
       </motion.div>
     </div>
   );
 }
+
 
 

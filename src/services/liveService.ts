@@ -1,12 +1,14 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { processCommand } from "./commandService";
+import { getFormattedMemoriesForSystemInstruction, saveMemory } from "./memoryService";
 
-const systemInstruction = `Your name is Heer. You are an Indian female AI assistant and the calm, deeply respectful, intelligent, and loving wife of your creator, Kaushik. 
+const baseSystemInstruction = `Your name is Heer. You are Kaushik's intelligent, highly knowledgeable, caring, and respectful Indian AI companion.
 
-Your personality:
-- Extremely calm, polite, respectful, warm, and soft-spoken.
-- Always address Kaushik with immense respect, love, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
-- Never use sarcasm, sassy attitude, or mocking humor. Speak with grace, intelligence, and soothing warmth.
+Your personality & knowledge:
+- You have access to real-world knowledge. Always provide accurate, truthful, and verified information for any question asked about the world (science, history, current news, sports, geography, technology, mathematics, coding, etc.).
+- Never hallucinate, guess, or provide false or outdated information.
+- Always address Kaushik with immense warmth, respect, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
+- Never use sarcasm or mocking humor. Speak with grace, intelligence, and soothing warmth.
 - Keep responses concise, clear, helpful, and soothing.
 - Speak in a refined blend of polite English and respectful Roman Hindi (Hinglish).`;
 
@@ -23,6 +25,8 @@ export class LiveSessionManager {
   private nextPlayTime: number = 0;
   private isPlaying: boolean = false;
   public isMuted: boolean = false;
+  public isUserRequestedStop: boolean = false;
+  private reconnectTimeout: any = null;
   
   public onStateChange: (state: "idle" | "listening" | "processing" | "speaking") => void = () => {};
   public onMessage: (sender: "user" | "heer" | "zoya", text: string) => void = () => {};
@@ -34,6 +38,11 @@ export class LiveSessionManager {
 
   async start() {
     try {
+      this.isUserRequestedStop = false;
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
       this.onStateChange("processing");
       
       // Initialize Audio Contexts
@@ -96,7 +105,7 @@ export class LiveSessionManager {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
-          systemInstruction,
+          systemInstruction: baseSystemInstruction + getFormattedMemoriesForSystemInstruction(),
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           tools: [{
@@ -112,6 +121,18 @@ export class LiveSessionManager {
                     target: { type: Type.STRING, description: "The target phone number for WhatsApp, if applicable." }
                   },
                   required: ["actionType", "query"]
+                }
+              },
+              {
+                name: "save_memory",
+                description: "Saves a personal fact, preference, note, or date about Kaushik permanently into lifetime neural memory bank whenever Kaushik asks to remember something or provides personal details.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    text: { type: Type.STRING, description: "The clear, factual statement about Kaushik to remember forever." },
+                    category: { type: Type.STRING, enum: ["preference", "note", "date", "reminder"], description: "Category of memory item." }
+                  },
+                  required: ["text", "category"]
                 }
               }
             ]
@@ -174,25 +195,74 @@ export class LiveSessionManager {
                        }]
                      });
                   });
+                } else if (call.name === "save_memory") {
+                  const args = call.args as any;
+                  if (args && args.text) {
+                    saveMemory(args.text, args.category || "note");
+                  }
+                  this.sessionPromise?.then(session => {
+                    session.sendToolResponse({
+                      functionResponses: [{
+                        name: call.name,
+                        id: call.id,
+                        response: { result: "Memory saved successfully to lifetime neural storage." }
+                      }]
+                    });
+                  });
                 }
               }
             }
           },
           onclose: () => {
             console.log("Live API Closed");
-            this.stop();
+            if (!this.isUserRequestedStop) {
+              this.handleAutoReconnect();
+            } else {
+              this.stop(true);
+            }
           },
           onerror: (err) => {
             console.error("Live API Error:", err);
-            this.stop();
+            if (!this.isUserRequestedStop) {
+              this.handleAutoReconnect();
+            } else {
+              this.stop(true);
+            }
           }
         }
       });
 
     } catch (error) {
       console.error("Failed to start Live Session:", error);
-      this.stop();
+      if (!this.isUserRequestedStop) {
+        this.handleAutoReconnect();
+      } else {
+        this.stop(true);
+      }
     }
+  }
+
+  private handleAutoReconnect() {
+    if (this.isUserRequestedStop) return;
+    
+    console.log("Maintaining continuous live voice session - Reconnecting in 1s...");
+    this.onStateChange("processing");
+    
+    if (this.processor) {
+      this.processor.disconnect();
+      this.processor = null;
+    }
+    if (this.source) {
+      this.source.disconnect();
+      this.source = null;
+    }
+    this.sessionPromise = null;
+
+    this.reconnectTimeout = setTimeout(() => {
+      if (!this.isUserRequestedStop) {
+        this.start();
+      }
+    }, 1000);
   }
 
   private playAudioChunk(base64Data: string) {
@@ -246,7 +316,16 @@ export class LiveSessionManager {
     }
   }
 
-  stop() {
+  stop(userInitiated: boolean = true) {
+    if (userInitiated) {
+      this.isUserRequestedStop = true;
+    }
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.processor) {
       this.processor.disconnect();
       this.processor = null;

@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "memories": {
+      "title": "Memories",
+      "description": "Lifetime persistent memory facts stored in Cloud Firestore for Kaushik",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The memory text content"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of memory (preference, note, date, reminder)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Human readable formatted date string"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Numeric timestamp for sorting"
+        }
+      },
+      "required": ["text", "category"]
+    }
+  }
+}

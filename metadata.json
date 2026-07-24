@@ -1,7 +1,10 @@
 {
-  "name": "Remix: Heer - AI Voice Assistant",
-  "description": "An intelligent, witty, and loving AI assistant named Heer, wife of creator Kaushik.",
+  "name": "Heer - Real-Time AI Assistant",
+  "description": "An intelligent, highly knowledgeable, and loving Indian AI companion equipped with Gemini 3.6 Flash real-time Google Search grounding.",
   "requestFramePermissions": [
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }
