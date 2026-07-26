@@ -155,13 +155,56 @@ export async function getHeerResponse(
     // Automatically detect and save any new memory triggers from Kaushik's message
     autoDetectAndSaveUserMemories(prompt);
 
-    // Build system instruction including current date/time and lifetime stored memories
-    const nowStr = new Date().toLocaleString('en-US', {
-      dateStyle: 'full',
-      timeStyle: 'medium',
-      hour12: true
-    });
-    const systemInstruction = `${baseSystemInstruction}\n\n[CURRENT REAL-TIME SYSTEM CLOCK]\nCurrent Date & Time: ${nowStr}\n\n${getFormattedMemoriesForSystemInstruction()}`;
+    // Auto-detect reminder requests in prompt (e.g. "1:10 ko yaad dilana", "10 minute baad", "5 baje")
+    let autoReminderSummary = "";
+    const lowerPrompt = prompt.toLowerCase();
+    if (
+      lowerPrompt.includes("yaad dila") ||
+      lowerPrompt.includes("yaad rakhna") ||
+      lowerPrompt.includes("remind") ||
+      lowerPrompt.includes("alarm") ||
+      lowerPrompt.includes("timer") ||
+      lowerPrompt.includes("ko yaad") ||
+      lowerPrompt.includes("pe yaad")
+    ) {
+      // Try extracting time expression from prompt
+      const timeExtractMatch = prompt.match(/(\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:baj\s*k[ae]|baj\s*kar|baje)|\d+\s*(?:min|minute|minutes))\b/i);
+      if (timeExtractMatch) {
+        const extractedTime = timeExtractMatch[1];
+        let cleanedTask = prompt
+          .replace(/(\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:baj\s*k[ae]|baj\s*kar|baje)|\d+\s*(?:min|minute|minutes))/gi, "")
+          .replace(/(yaad dilana|yaad dila dena|yaad dila|remind me|set alarm|ko|pe|mujhse|ki|karne ko)/gi, "")
+          .trim();
+        if (!cleanedTask || cleanedTask.length < 2) {
+          cleanedTask = "Scheduled Task / Reminder for Kaushik";
+        }
+        const createdReminder = addScheduledReminder(extractedTime, cleanedTask);
+        autoReminderSummary = `\n[⏰ Reminder Set & Active: Scheduled for ${createdReminder.displayTimeStr} - "${createdReminder.reminderText}"]`;
+      }
+    }
+
+    // Build system instruction including exact user device real-time clock & lifetime stored memories
+    const now = new Date();
+    const timeZoneStr = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+    const time12Str = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+    const time24Str = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+    const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+    const clockInstruction = `\n\n[LIVE CLOCK & REAL-TIME ACCURACY - MANDATORY TRUTH]:
+- User Current Time (12-Hour AM/PM): ${time12Str}
+- User Current Time (24-Hour Format): ${time24Str}
+- User Current Date: ${dateStr}
+- Timezone: ${timeZoneStr}
+- Current Exact Hour: ${now.getHours()} (0 to 23)
+- Current Exact Minute: ${now.getMinutes()}
+- Current Exact Second: ${now.getSeconds()}
+
+CRITICAL TIME INSTRUCTIONS FOR HEER:
+1. Whenever Kaushik asks "kya time hua hai?", "what time is it?", or asks about current time or date, answer EXACTLY using the User Current Time (${time12Str}) above.
+2. Whenever Kaushik asks to set a reminder or alarm, compute the target time strictly relative to this current time (${time12Str} / ${time24Str}).
+3. Never guess, hallucinate, or make up a different time.`;
+
+    const systemInstruction = `${baseSystemInstruction}${clockInstruction}\n\n${getFormattedMemoriesForSystemInstruction()}`;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -293,6 +336,9 @@ export async function getHeerResponse(
     }
 
     let replyText = response.text?.trim() || "";
+    if (autoReminderSummary && !toolResultsSummary.includes("[⏰ Reminder Set")) {
+      toolResultsSummary += autoReminderSummary;
+    }
     if (toolResultsSummary) {
       replyText += toolResultsSummary;
     }

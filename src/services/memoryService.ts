@@ -225,6 +225,10 @@ export function saveMemory(
     console.error("Failed to save memory to localStorage", e);
   }
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("heer-memory-updated"));
+  }
+
   // Write directly to Firebase Cloud Firestore
   try {
     addDoc(collection(db, "memories"), {
