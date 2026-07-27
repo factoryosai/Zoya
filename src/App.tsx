@@ -8,7 +8,6 @@ import PermissionModal from "./components/PermissionModal";
 import MorningBriefingModal from "./components/MorningBriefingModal";
 import MemoryDrawer from "./components/MemoryDrawer";
 import SettingsModal, { VisualizerTheme } from "./components/SettingsModal";
-import ThoughtOfDayModal from "./components/ThoughtOfDayModal";
 import DynamicBackground, { TimeOfDay, getTimeOfDayLabel } from "./components/DynamicBackground";
 import SoundscapeDock from "./components/SoundscapeDock";
 import { WorkspaceDrawer } from "./components/WorkspaceDrawer";
@@ -73,7 +72,6 @@ export default function App() {
   // High-Tech Feature Modals State
   const [showBriefing, setShowBriefing] = useState(false);
   const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
-  const [showThoughtModal, setShowThoughtModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showWorkspaceDrawer, setShowWorkspaceDrawer] = useState(false);
@@ -242,19 +240,6 @@ export default function App() {
     localStorage.setItem("heer_mobile_permissions", JSON.stringify(allPermissions));
   }, []);
 
-  // Auto show daily Thought of the Day popup once per day
-  useEffect(() => {
-    const lastShownDate = localStorage.getItem("heer_last_thought_date");
-    const today = new Date().toDateString();
-    if (lastShownDate !== today) {
-      const timer = setTimeout(() => {
-        setShowThoughtModal(true);
-        localStorage.setItem("heer_last_thought_date", today);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -414,11 +399,6 @@ export default function App() {
       <MemoryDrawer 
         isOpen={showMemoryDrawer} 
         onClose={() => setShowMemoryDrawer(false)}
-        onSpeakText={speakCustomText}
-      />
-      <ThoughtOfDayModal 
-        isOpen={showThoughtModal} 
-        onClose={() => setShowThoughtModal(false)}
         onSpeakText={speakCustomText}
       />
       <SettingsModal 

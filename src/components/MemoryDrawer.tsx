@@ -15,9 +15,13 @@ export default function MemoryDrawer({ isOpen, onClose, onSpeakText }: MemoryDra
   const [category, setCategory] = useState<MemoryItem["category"]>("note");
 
   useEffect(() => {
-    if (isOpen) {
-      setMemories(getMemories());
-    }
+    const refresh = () => setMemories(getMemories());
+    refresh();
+
+    window.addEventListener("heer-memory-updated", refresh);
+    return () => {
+      window.removeEventListener("heer-memory-updated", refresh);
+    };
   }, [isOpen]);
 
   const handleAddMemory = (e: React.FormEvent) => {

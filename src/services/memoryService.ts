@@ -112,8 +112,8 @@ let inMemoryCache: MemoryItem[] | null = null;
 // Initialize real-time listener with Firestore and auto-seed default family memories if collection empty
 if (typeof window !== "undefined") {
   try {
-    const q = query(collection(db, "memories"), orderBy("timestamp", "desc"));
-    onSnapshot(q, (snapshot) => {
+    const colRef = collection(db, "memories");
+    onSnapshot(colRef, (snapshot) => {
       const docs: MemoryItem[] = snapshot.docs.map((d) => {
         const data = d.data();
         return {
@@ -121,37 +121,33 @@ if (typeof window !== "undefined") {
           category: data.category || "note",
           text: data.text || "",
           createdAt: data.createdAt || "Cloud Memory",
-          timestamp: data.timestamp || Date.now(),
+          timestamp: typeof data.timestamp === "number" ? data.timestamp : Date.now(),
         };
       });
+
+      // Sort descending by timestamp in JavaScript (avoids unindexed query errors)
+      docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       if (docs.length > 0) {
         inMemoryCache = docs;
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
         } catch (e) {}
-        // Check if any default items are missing in existing docs and add them
-        DEFAULT_MEMORIES.forEach((m) => {
-          if (!docs.some((d) => d.text.toLowerCase().includes(m.text.toLowerCase().slice(0, 20)))) {
-            addDoc(collection(db, "memories"), {
-              text: m.text,
-              category: m.category,
-              createdAt: m.createdAt,
-              timestamp: m.timestamp || Date.now(),
-            }).catch(() => {});
-          }
-        });
       } else {
-        // Auto-seed default family facts into Firestore
+        // Auto-seed default family facts into Firestore once if DB is empty
         DEFAULT_MEMORIES.forEach((m) => {
           addDoc(collection(db, "memories"), {
             text: m.text,
             category: m.category,
             createdAt: m.createdAt,
             timestamp: m.timestamp || Date.now(),
-          }).catch(() => {});
+          }).catch((err) => console.warn("Default seed error:", err));
         });
         inMemoryCache = DEFAULT_MEMORIES;
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("heer-memory-updated"));
       }
     }, (err) => {
       console.warn("Firestore subscription notice:", err);
@@ -303,7 +299,8 @@ export function autoDetectAndSaveUserMemories(userText: string): boolean {
     "yaad rakhna", "yaad rakho", "yaad rakhiye", "yaad kar lo", "yaad rakhna ki", "yaad rakhna ke",
     "remember this", "remember that", "remember it", "remember",
     "note down", "note this", "note kar lo", "note kar lena", "note karo",
-    "save this", "save note", "ise yaad", "ye yaad", "mere bare me yaad", "mere baare me yaad"
+    "save this", "save note", "ise yaad", "ye yaad", "mere bare me yaad", "mere baare me yaad",
+    "memory save", "save memory", "memory me save", "memory mai save", "memory me daalo", "memory me dalo", "memory me add"
   ];
 
   const containsExplicit = explicitKeywords.some((kw) => lower.includes(kw));
