@@ -141,39 +141,58 @@ export default function App() {
     requestNotificationPermission();
   }, []);
 
-  // Background Clock Alarm Listener: Checks scheduled reminders every 3 seconds
+  // Background Clock Alarm Listener: Self-correcting, millisecond-precise system-clock reconciled loop
   useEffect(() => {
-    const alarmInterval = setInterval(async () => {
-      const due = checkAndTriggerPendingReminders();
+    const processDueReminders = async () => {
+      const nowMs = Date.now();
+      const due = checkAndTriggerPendingReminders(nowMs);
       if (due.length > 0) {
-        const reminder = due[0];
-        setActiveAlarm(reminder);
-        triggerHaptic("success");
+        for (const reminder of due) {
+          setActiveAlarm(reminder);
+          triggerHaptic("success");
 
-        const reminderMsg = `Kaushik Ji, ${reminder.displayTimeStr} baj gaye hain! Maine aapko yaad dilane ke liye bola tha: "${reminder.reminderText}"`;
-        
-        // Trigger System Web Notification (Works even if tab/app is minimized in background)
-        showSystemNotification("⏰ Heer AI Reminder", `Kaushik Ji: ${reminder.reminderText}`);
+          const reminderMsg = `Kaushik Ji, ${reminder.displayTimeStr} baj gaye hain! Maine aapko yaad dilane ke liye bola tha: "${reminder.reminderText}"`;
+          
+          // Trigger System Web Notification (Works even if tab/app is minimized in background)
+          showSystemNotification("⏰ Heer AI Reminder", `Kaushik Ji: ${reminder.reminderText}`);
 
-        setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "heer", text: reminderMsg }]);
+          setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "heer", text: reminderMsg }]);
 
-        if (!isMuted) {
-          setAppState("speaking");
-          try {
-            const base64Audio = await getHeerAudio(reminderMsg);
-            if (base64Audio) {
-              await playPCM(base64Audio);
+          if (!isMuted) {
+            setAppState("speaking");
+            try {
+              const base64Audio = await getHeerAudio(reminderMsg);
+              if (base64Audio) {
+                await playPCM(base64Audio);
+              }
+            } catch (e) {
+              console.error("Alarm audio error:", e);
+            } finally {
+              setAppState("idle");
             }
-          } catch (e) {
-            console.error("Alarm audio error:", e);
-          } finally {
-            setAppState("idle");
           }
         }
       }
-    }, 3000);
+    };
 
-    return () => clearInterval(alarmInterval);
+    // 1. High-frequency 500ms interval for sub-second precision
+    const alarmInterval = setInterval(() => {
+      processDueReminders();
+    }, 500);
+
+    // 2. Immediate reconciliation on tab focus / visibilitychange (waking from browser sleep/background)
+    const handleReconcileOnFocus = () => {
+      processDueReminders();
+    };
+
+    window.addEventListener("visibilitychange", handleReconcileOnFocus);
+    window.addEventListener("focus", handleReconcileOnFocus);
+
+    return () => {
+      clearInterval(alarmInterval);
+      window.removeEventListener("visibilitychange", handleReconcileOnFocus);
+      window.removeEventListener("focus", handleReconcileOnFocus);
+    };
   }, [isMuted]);
   
   // Customization Settings

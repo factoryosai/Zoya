@@ -156,18 +156,18 @@ export function addScheduledReminder(timeExpr: string, reminderText: string): Sc
 }
 
 /**
- * Checks for any reminders whose target time has arrived and marks them triggered.
+ * Checks for any reminders whose target time has arrived (down to millisecond precision) and marks them triggered.
  */
-export function checkAndTriggerPendingReminders(): ScheduledReminder[] {
+export function checkAndTriggerPendingReminders(nowTime: number = Date.now()): ScheduledReminder[] {
   const reminders = getScheduledReminders();
-  const nowTime = new Date().getTime();
   const dueToTrigger: ScheduledReminder[] = [];
 
   const updated = reminders.map(r => {
     if (!r.triggered) {
       const targetTime = new Date(r.targetTimeISO).getTime();
-      // Trigger if time reached or passed within last 30 minutes
-      if (nowTime >= targetTime && (nowTime - targetTime) <= 30 * 60 * 1000) {
+      const diffMs = nowTime - targetTime;
+      // Trigger if target time reached (diffMs >= 0) and passed within last 30 minutes
+      if (diffMs >= 0 && diffMs <= 30 * 60 * 1000) {
         r.triggered = true;
         dueToTrigger.push(r);
       }
@@ -180,6 +180,35 @@ export function checkAndTriggerPendingReminders(): ScheduledReminder[] {
   }
 
   return dueToTrigger;
+}
+
+/**
+ * Returns exact millisecond difference for a reminder relative to specified system time
+ */
+export function getMillisecondRemaining(reminder: ScheduledReminder, nowTime: number = Date.now()): number {
+  const targetTime = new Date(reminder.targetTimeISO).getTime();
+  return targetTime - nowTime;
+}
+
+/**
+ * Returns the next untriggered reminder and its exact millisecond offset
+ */
+export function getMostUrgentReminder(nowTime: number = Date.now()): { reminder: ScheduledReminder; msRemaining: number } | null {
+  const reminders = getScheduledReminders().filter(r => !r.triggered);
+  if (reminders.length === 0) return null;
+
+  let best = reminders[0];
+  let minDiff = getMillisecondRemaining(best, nowTime);
+
+  for (let i = 1; i < reminders.length; i++) {
+    const diff = getMillisecondRemaining(reminders[i], nowTime);
+    if (diff < minDiff) {
+      minDiff = diff;
+      best = reminders[i];
+    }
+  }
+
+  return { reminder: best, msRemaining: minDiff };
 }
 
 export function deleteReminder(id: string): void {
