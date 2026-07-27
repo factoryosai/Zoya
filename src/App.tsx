@@ -20,6 +20,7 @@ import { registerServiceWorker, requestNotificationPermission, showSystemNotific
 import { playPCM } from "./utils/audioUtils";
 import { triggerHaptic } from "./utils/haptics";
 import { analyzeConversationSentiment, SentimentAnalysisResult } from "./utils/sentiment";
+import { getStoredVoiceSettings, speakWithBrowserVoice } from "./utils/speechUtils";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
@@ -269,6 +270,20 @@ export default function App() {
     scrollToBottom();
   }, [messages, appState]);
 
+  const playHeerSpeech = async (text: string) => {
+    const vSettings = getStoredVoiceSettings();
+    if (vSettings.engine === "webspeech") {
+      return new Promise<void>((resolve) => {
+        speakWithBrowserVoice(text, vSettings, () => resolve());
+      });
+    } else {
+      const audioBase64 = await getHeerAudio(text, vSettings.geminiVoice);
+      if (audioBase64) {
+        await playPCM(audioBase64);
+      }
+    }
+  };
+
   const handleTextCommand = useCallback(async (finalTranscript: string) => {
     if (!finalTranscript.trim()) {
       setAppState("idle");
@@ -297,10 +312,7 @@ export default function App() {
       
       if (!isMuted) {
         setAppState("speaking");
-        const audioBase64 = await getHeerAudio(responseText);
-        if (audioBase64) {
-          await playPCM(audioBase64);
-        }
+        await playHeerSpeech(responseText);
       }
 
       setAppState("idle");
@@ -317,10 +329,7 @@ export default function App() {
       
       if (!isMuted) {
         setAppState("speaking");
-        const audioBase64 = await getHeerAudio(responseText);
-        if (audioBase64) {
-          await playPCM(audioBase64);
-        }
+        await playHeerSpeech(responseText);
       }
       setAppState("idle");
     }
@@ -388,10 +397,7 @@ export default function App() {
 
   const speakCustomText = async (text: string) => {
     setAppState("speaking");
-    const audioBase64 = await getHeerAudio(text);
-    if (audioBase64) {
-      await playPCM(audioBase64);
-    }
+    await playHeerSpeech(text);
     setAppState("idle");
   };
 

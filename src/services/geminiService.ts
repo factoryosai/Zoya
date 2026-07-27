@@ -376,11 +376,13 @@ CRITICAL TIME INSTRUCTIONS FOR HEER:
 }
 export const getZoyaResponse = getHeerResponse;
 
-export async function getHeerAudio(text: string): Promise<string | null> {
+export async function getHeerAudio(text: string, voiceName: string = "Kore"): Promise<string | null> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     // Clean markdown formatting before TTS
     const cleanSpeechText = text.replace(/[*_#`~]/g, "").slice(0, 600);
+
+    const validVoice = ["Kore", "Aoede", "Puck", "Charon", "Fenrir"].includes(voiceName) ? voiceName : "Kore";
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
@@ -389,7 +391,7 @@ export async function getHeerAudio(text: string): Promise<string | null> {
         responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: "Kore" },
+            prebuiltVoiceConfig: { voiceName: validVoice },
           },
         },
       },

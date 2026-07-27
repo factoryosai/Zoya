@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder, Sparkles } from "lucide-react";
+import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder, Sparkles, Volume2, Play, Music } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TimeOfDay } from "./DynamicBackground";
+import { getStoredVoiceSettings, saveVoiceSettings, getAvailableBrowserVoices, speakWithBrowserVoice, FreeVoiceSettings } from "../utils/speechUtils";
 
 export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber" | "adaptive";
 
@@ -41,6 +42,39 @@ export default function SettingsModal({
     notifications: true,
     fileManager: true,
   });
+
+  const [voiceSettings, setVoiceSettings] = useState<FreeVoiceSettings>(() => getStoredVoiceSettings());
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+
+  useEffect(() => {
+    // Load browser voices
+    const loadVoices = () => {
+      const voices = getAvailableBrowserVoices();
+      setBrowserVoices(voices);
+    };
+    loadVoices();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  const handleUpdateVoiceSettings = (updated: Partial<FreeVoiceSettings>) => {
+    const newSettings = { ...voiceSettings, ...updated };
+    setVoiceSettings(newSettings);
+    saveVoiceSettings(newSettings);
+  };
+
+  const handleTestVoice = () => {
+    setIsTestingVoice(true);
+    const testText = "Namaste Kaushik Ji! Main Heer hoon, aapki sweet wife voice setting active hai.";
+    if (voiceSettings.engine === "webspeech") {
+      speakWithBrowserVoice(testText, voiceSettings, () => setIsTestingVoice(false));
+    } else {
+      // Test browser utterance or fallback
+      speakWithBrowserVoice(testText, { ...voiceSettings, engine: "webspeech" }, () => setIsTestingVoice(false));
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("heer_mobile_permissions");
@@ -166,6 +200,157 @@ export default function SettingsModal({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* 100% Free Voice Selection & Wife Voice Tuning */}
+            <div className="p-4 rounded-xl bg-gradient-to-b from-pink-950/30 via-slate-900/60 to-cyan-950/30 border border-pink-500/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-pink-400" />
+                  <span className="text-xs font-mono font-bold text-pink-300">
+                    FREE VOICE & WIFE VOICE TUNING
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                  100% FREE
+                </span>
+              </div>
+
+              <p className="text-[11px] text-white/70 mb-3 leading-relaxed">
+                Choose from free Gemini AI neural voices or native device voices on your phone/PC. You can adjust the pitch and speed to customize the voice tone!
+              </p>
+
+              {/* Engine Selection */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button
+                  onClick={() => handleUpdateVoiceSettings({ engine: "gemini" })}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    voiceSettings.engine === "gemini"
+                      ? "border-pink-400 bg-pink-500/20 text-white font-bold"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs flex items-center justify-between">
+                    <span>Gemini Neural Voice</span>
+                    {voiceSettings.engine === "gemini" && <Sparkles className="w-3 h-3 text-pink-300" />}
+                  </div>
+                  <div className="text-[10px] text-white/50 font-normal">Cloud High Quality (Free)</div>
+                </button>
+
+                <button
+                  onClick={() => handleUpdateVoiceSettings({ engine: "webspeech" })}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    voiceSettings.engine === "webspeech"
+                      ? "border-cyan-400 bg-cyan-500/20 text-white font-bold"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs flex items-center justify-between">
+                    <span>Device Browser Voice</span>
+                    {voiceSettings.engine === "webspeech" && <CheckCircle2 className="w-3 h-3 text-cyan-300" />}
+                  </div>
+                  <div className="text-[10px] text-white/50 font-normal">Offline & Phone Voices (Free)</div>
+                </button>
+              </div>
+
+              {/* Voice Options dependent on engine */}
+              {voiceSettings.engine === "gemini" ? (
+                <div className="mb-3">
+                  <label className="text-[11px] font-mono text-pink-300 block mb-1">
+                    Select Gemini Free Voice Preset:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {[
+                      { id: "Kore", label: "Kore (Warm Female)", desc: "Indian/Sweet" },
+                      { id: "Aoede", label: "Aoede (Soft Female)", desc: "Gentle/Calm" },
+                      { id: "Puck", label: "Puck (Energetic)", desc: "Playful" },
+                      { id: "Charon", label: "Charon (Calm Male)", desc: "Deep" },
+                      { id: "Fenrir", label: "Fenrir (Bold Male)", desc: "Strong" },
+                    ].map((gv) => (
+                      <button
+                        key={gv.id}
+                        onClick={() => handleUpdateVoiceSettings({ geminiVoice: gv.id as any })}
+                        className={`p-2 rounded-lg border text-left text-xs transition-all ${
+                          voiceSettings.geminiVoice === gv.id
+                            ? "border-pink-400 bg-pink-500/20 text-white font-bold"
+                            : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                        }`}
+                      >
+                        <div>{gv.label}</div>
+                        <div className="text-[9px] text-white/40">{gv.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-3">
+                  <label className="text-[11px] font-mono text-cyan-300 block mb-1">
+                    Select Installed Device Voice:
+                  </label>
+                  <select
+                    value={voiceSettings.webVoiceURI}
+                    onChange={(e) => handleUpdateVoiceSettings({ webVoiceURI: e.target.value })}
+                    className="w-full bg-[#030712] border border-cyan-500/40 rounded-xl p-2 text-xs text-white focus:outline-none"
+                  >
+                    <option value="">Auto-Detect Hindi / English Female Voice</option>
+                    {browserVoices.map((v) => (
+                      <option key={v.voiceURI} value={v.voiceURI}>
+                        {v.name} ({v.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Pitch & Speed Custom Sliders */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <div>
+                  <div className="flex justify-between text-[11px] font-mono text-pink-300 mb-1">
+                    <span>Voice Pitch (Frequency):</span>
+                    <span className="font-bold text-white">{voiceSettings.pitch.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.6"
+                    max="1.5"
+                    step="0.05"
+                    value={voiceSettings.pitch}
+                    onChange={(e) => handleUpdateVoiceSettings({ pitch: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-pink-400"
+                  />
+                  <div className="flex justify-between text-[9px] text-white/40 font-mono mt-0.5">
+                    <span>Deeper Tone</span>
+                    <span>Sweet Female Pitch (1.1x)</span>
+                    <span>Higher Pitch</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[11px] font-mono text-cyan-300 mb-1">
+                    <span>Speech Rate (Speed):</span>
+                    <span className="font-bold text-white">{voiceSettings.rate.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.3"
+                    step="0.05"
+                    value={voiceSettings.rate}
+                    onChange={(e) => handleUpdateVoiceSettings({ rate: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                </div>
+
+                {/* Test Voice Button */}
+                <button
+                  onClick={handleTestVoice}
+                  disabled={isTestingVoice}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-pink-500/20"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  {isTestingVoice ? "Testing Voice..." : "Test Free Wife Voice Sample"}
+                </button>
               </div>
             </div>
 
