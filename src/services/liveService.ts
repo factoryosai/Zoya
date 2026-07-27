@@ -100,7 +100,7 @@ export class LiveSessionManager {
 
       // Connect to Live API
       this.sessionPromise = this.ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+        model: "gemini-3.5-live-translate-preview",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {

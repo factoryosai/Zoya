@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder } from "lucide-react";
+import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TimeOfDay } from "./DynamicBackground";
 
-export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber";
+export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber" | "adaptive";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -229,9 +229,44 @@ export default function SettingsModal({
 
             {/* Visualizer Color Theme */}
             <div>
-              <label className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 mb-3">
-                <Palette className="w-3.5 h-3.5" /> Visualizer HUD Theme:
+              <label className="text-xs font-mono text-cyan-300 flex items-center justify-between mb-3">
+                <span className="flex items-center gap-1.5"><Palette className="w-3.5 h-3.5" /> Visualizer HUD Theme:</span>
+                {currentTheme === "adaptive" && (
+                  <span className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 animate-spin" /> Adaptive Active
+                  </span>
+                )}
               </label>
+              
+              {/* Adaptive Mode Highlight Card */}
+              <button
+                onClick={() => onThemeChange("adaptive")}
+                className={`w-full mb-2 p-3 rounded-xl border flex items-center justify-between transition-all ${
+                  currentTheme === "adaptive"
+                    ? "border-amber-400 bg-gradient-to-r from-amber-500/20 via-pink-500/20 to-cyan-500/20 text-white shadow-lg shadow-amber-500/20"
+                    : "border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-amber-400 via-pink-500 to-cyan-400 text-black">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold flex items-center gap-1.5 text-amber-200">
+                      Adaptive Mode (Gemini AI Sentiment Sync)
+                    </div>
+                    <div className="text-[10px] text-white/60">
+                      Auto-shifts palette based on current mood & conversation sentiment
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
+                  currentTheme === "adaptive" ? "bg-amber-400 text-black" : "bg-white/10 text-white/40"
+                }`}>
+                  {currentTheme === "adaptive" ? "ACTIVE" : "ENABLE"}
+                </span>
+              </button>
+
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: "violet", label: "Cyber Amethyst", color: "from-violet-500 to-pink-500" },

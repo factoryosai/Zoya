@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
+import { VisualizerTheme } from "./SettingsModal";
 
 export type TimeOfDay = "auto" | "morning" | "afternoon" | "evening" | "night";
 
 interface DynamicBackgroundProps {
   timeOfDayMode?: TimeOfDay;
   appState?: "idle" | "listening" | "processing" | "speaking";
+  colorTheme?: VisualizerTheme;
 }
 
 export function getTimeOfDayLabel(mode: TimeOfDay): { label: string; icon: string; colors: string[] } {
@@ -68,7 +70,7 @@ interface SynapticPulse {
   color: string;
 }
 
-export default function DynamicBackground({ timeOfDayMode = "auto", appState = "idle" }: DynamicBackgroundProps) {
+export default function DynamicBackground({ timeOfDayMode = "auto", appState = "idle", colorTheme = "cyan" }: DynamicBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [currentPeriod, setCurrentPeriod] = useState<string>("night");
 
@@ -108,8 +110,8 @@ export default function DynamicBackground({ timeOfDayMode = "auto", appState = "
     };
     window.addEventListener("resize", handleResize);
 
-    // Color Palette matching the screenshot (Cyan, Vibrant Purple, Bright Orange/Amber, Electric Blue)
-    const colors = [
+    // Dynamic Theme Color Palette
+    let colors = [
       "#00f0ff", // Bright Cyan
       "#3b82f6", // Electric Blue
       "#a855f7", // Violet Purple
@@ -117,6 +119,16 @@ export default function DynamicBackground({ timeOfDayMode = "auto", appState = "
       "#fb923c", // Warm Glowing Orange
       "#f59e0b", // Gold Sparkle
     ];
+
+    if (colorTheme === "amber") {
+      colors = ["#f59e0b", "#fb923c", "#f43f5e", "#ec4899", "#fbbf24", "#d97706"];
+    } else if (colorTheme === "emerald") {
+      colors = ["#10b981", "#14b8a6", "#34d399", "#06b6d4", "#059669", "#38bdf8"];
+    } else if (colorTheme === "violet") {
+      colors = ["#8b5cf6", "#a855f7", "#ec4899", "#d946ef", "#6366f1", "#c084fc"];
+    } else if (colorTheme === "cyan") {
+      colors = ["#06b6d4", "#3b82f6", "#00f0ff", "#0ea5e9", "#60a5fa", "#22d3ee"];
+    }
 
     // Generate Nodes
     const nodeCount = Math.min(Math.floor((width * height) / 14000), 110);

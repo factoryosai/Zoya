@@ -19,6 +19,7 @@ import { checkAndTriggerPendingReminders, ScheduledReminder } from "./services/r
 import { registerServiceWorker, requestNotificationPermission, showSystemNotification, getNotificationPermissionState } from "./services/notificationService";
 import { playPCM } from "./utils/audioUtils";
 import { triggerHaptic } from "./utils/haptics";
+import { analyzeConversationSentiment, SentimentAnalysisResult } from "./utils/sentiment";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
@@ -197,6 +198,9 @@ export default function App() {
   const [colorTheme, setColorTheme] = useState<VisualizerTheme>(() => {
     return (localStorage.getItem("heer_color_theme") as VisualizerTheme) || "cyan";
   });
+  const [adaptiveTheme, setAdaptiveTheme] = useState<"violet" | "cyan" | "emerald" | "amber">("cyan");
+  const [detectedSentiment, setDetectedSentiment] = useState<SentimentAnalysisResult | null>(null);
+
   const [personaMode, setPersonaMode] = useState<string>(() => {
     return localStorage.getItem("heer_persona_mode") || "loving";
   });
@@ -207,6 +211,20 @@ export default function App() {
   const [timeOfDayMode, setTimeOfDayMode] = useState<TimeOfDay>(() => {
     return (localStorage.getItem("heer_time_of_day_mode") as TimeOfDay) || "auto";
   });
+
+  // Calculate active visualizer theme (resolving adaptive sentiment if enabled)
+  const activeTheme = colorTheme === "adaptive" ? adaptiveTheme : colorTheme;
+
+  // Sentiment Analysis Effect: Auto-detect conversation mood when messages change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastUser = [...messages].reverse().find(m => m.sender === "user")?.text || "";
+    const lastHeer = [...messages].reverse().find(m => m.sender === "heer" || m.sender === "zoya")?.text || "";
+
+    const analysis = analyzeConversationSentiment(lastUser, lastHeer);
+    setDetectedSentiment(analysis);
+    setAdaptiveTheme(analysis.recommendedTheme);
+  }, [messages]);
 
   useEffect(() => {
     localStorage.setItem("heer_color_theme", colorTheme);
@@ -415,7 +433,7 @@ export default function App() {
       />
 
       {/* Full-Screen Glowing 3D Neural Matrix Background */}
-      <DynamicBackground timeOfDayMode={timeOfDayMode} appState={appState} />
+      <DynamicBackground timeOfDayMode={timeOfDayMode} appState={appState} colorTheme={activeTheme} />
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-4 md:px-8 py-4">
@@ -428,6 +446,22 @@ export default function App() {
             <p className="text-[11px] text-white/50 hidden sm:block">AI Voice Companion for Kaushik</p>
           </div>
         </div>
+
+        {/* Adaptive Mode Sentiment Status Badge */}
+        {colorTheme === "adaptive" && detectedSentiment && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0a1532]/90 backdrop-blur-md border border-amber-400/40 text-[11px] font-mono text-white shadow-lg pointer-events-auto"
+            title={detectedSentiment.description}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span className="text-white/60 hidden md:inline">Adaptive Sentiment:</span>
+            <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${detectedSentiment.badgeColor}`}>
+              {detectedSentiment.label}
+            </span>
+          </motion.div>
+        )}
 
         {/* Minimal Audio Control */}
         <div className="flex items-center gap-2">
@@ -480,7 +514,7 @@ export default function App() {
 
         {/* Center Visualizer */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <Visualizer state={appState} colorTheme={colorTheme} />
+          <Visualizer state={appState} colorTheme={activeTheme} />
         </div>
 
         {/* Right Column: User State */}
