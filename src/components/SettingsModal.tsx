@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder, Sparkles, Volume2, Play, Music } from "lucide-react";
+import { X, Sliders, Palette, Heart, Shield, Mic, Sun, Moon, CloudSun, Sunset, Smartphone, Camera, Bluetooth, Wifi, Radio, Contact, PhoneCall, Key, CheckCircle2, Bell, Folder, Sparkles, Volume2, Play, Music, MessageSquare, Send, Check, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TimeOfDay } from "./DynamicBackground";
 import { getStoredVoiceSettings, saveVoiceSettings, getAvailableBrowserVoices, speakWithBrowserVoice, FreeVoiceSettings } from "../utils/speechUtils";
+import { getEvolutionConfig, saveEvolutionConfig, checkEvolutionConnection, sendWhatsAppMessage, EvolutionApiConfig } from "../services/evolutionApiService";
 
 export type VisualizerTheme = "violet" | "cyan" | "emerald" | "amber" | "adaptive";
 
@@ -46,6 +47,38 @@ export default function SettingsModal({
   const [voiceSettings, setVoiceSettings] = useState<FreeVoiceSettings>(() => getStoredVoiceSettings());
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
+
+  // Evolution API WhatsApp State
+  const [evoConfig, setEvoConfig] = useState<EvolutionApiConfig>(() => getEvolutionConfig());
+  const [evoTestStatus, setEvoTestStatus] = useState<{ testing: boolean; connected?: boolean; message?: string }>({ testing: false });
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testMsgText, setTestMsgText] = useState("Namaste! Heer AI Test Message via Evolution API.");
+  const [isSendingTestMsg, setIsSendingTestMsg] = useState(false);
+  const [testMsgResult, setTestMsgResult] = useState<string | null>(null);
+
+  const handleEvoSave = (updated: Partial<EvolutionApiConfig>) => {
+    const newCfg = { ...evoConfig, ...updated };
+    setEvoConfig(newCfg);
+    saveEvolutionConfig(newCfg);
+  };
+
+  const handleTestEvoConnection = async () => {
+    setEvoTestStatus({ testing: true });
+    const res = await checkEvolutionConnection(evoConfig);
+    setEvoTestStatus({ testing: false, connected: res.connected, message: res.message });
+  };
+
+  const handleSendTestMsg = async () => {
+    if (!testRecipient) {
+      setTestMsgResult("Please enter a test phone number (e.g. 9876543210).");
+      return;
+    }
+    setIsSendingTestMsg(true);
+    setTestMsgResult(null);
+    const res = await sendWhatsAppMessage(testRecipient, testMsgText);
+    setIsSendingTestMsg(false);
+    setTestMsgResult(res.message);
+  };
 
   useEffect(() => {
     // Load browser voices
@@ -351,6 +384,123 @@ export default function SettingsModal({
                   <Play className="w-3.5 h-3.5 fill-current" />
                   {isTestingVoice ? "Testing Voice..." : "Test Free Wife Voice Sample"}
                 </button>
+              </div>
+            </div>
+
+            {/* WhatsApp Integration (Evolution API) Card */}
+            <div className="p-4 rounded-xl bg-gradient-to-b from-emerald-950/40 via-slate-900/60 to-cyan-950/30 border border-emerald-500/30">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-mono font-bold text-emerald-300">
+                    WHATSAPP INTEGRATION (EVOLUTION API)
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                  DIRECT SENDING ACTIVE
+                </span>
+              </div>
+
+              <p className="text-[11px] text-white/70 mb-3 leading-relaxed">
+                Connect your Evolution API instance so Heer can send WhatsApp messages directly when you say "WhatsApp par message bhejo"!
+              </p>
+
+              <div className="space-y-2 mb-3">
+                <div>
+                  <label className="text-[10px] font-mono text-emerald-300 block mb-1">Evolution API Base URL:</label>
+                  <input
+                    type="text"
+                    placeholder="https://whatsapp.yourdomain.com or http://localhost:8080"
+                    value={evoConfig.baseUrl}
+                    onChange={(e) => handleEvoSave({ baseUrl: e.target.value })}
+                    className="w-full bg-[#030712] border border-emerald-500/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-mono text-emerald-300 block mb-1">Instance Name:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HeerInstance"
+                      value={evoConfig.instanceName}
+                      onChange={(e) => handleEvoSave({ instanceName: e.target.value })}
+                      className="w-full bg-[#030712] border border-emerald-500/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-mono text-emerald-300 block mb-1">Default Country Code:</label>
+                    <input
+                      type="text"
+                      placeholder="91 (India)"
+                      value={evoConfig.defaultCountryCode}
+                      onChange={(e) => handleEvoSave({ defaultCountryCode: e.target.value })}
+                      className="w-full bg-[#030712] border border-emerald-500/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono text-emerald-300 block mb-1">Global API Key:</label>
+                  <input
+                    type="password"
+                    placeholder="Enter your Evolution API Key"
+                    value={evoConfig.apiKey}
+                    onChange={(e) => handleEvoSave({ apiKey: e.target.value })}
+                    className="w-full bg-[#030712] border border-emerald-500/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Connection Test & Test Message Section */}
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <button
+                  onClick={handleTestEvoConnection}
+                  disabled={evoTestStatus.testing}
+                  className="w-full py-2 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-200 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${evoTestStatus.testing ? "animate-spin" : ""}`} />
+                  {evoTestStatus.testing ? "Testing Evolution API..." : "Check API Connection"}
+                </button>
+
+                {evoTestStatus.message && (
+                  <div className={`p-2 rounded-lg text-[11px] font-mono border flex items-center gap-2 ${
+                    evoTestStatus.connected
+                      ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
+                      : "bg-red-950/80 border-red-500/50 text-red-300"
+                  }`}>
+                    {evoTestStatus.connected ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                    <span>{evoTestStatus.message}</span>
+                  </div>
+                )}
+
+                {/* Send Quick Test WhatsApp Msg */}
+                <div className="mt-2 p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-2">
+                  <span className="text-[10px] font-mono text-white/70 block">Send Test WhatsApp Message:</span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Phone Number (e.g. 9876543210)"
+                      value={testRecipient}
+                      onChange={(e) => setTestRecipient(e.target.value)}
+                      className="flex-1 bg-[#030712] border border-white/20 rounded-md p-1.5 text-xs text-white font-mono focus:outline-none"
+                    />
+                    <button
+                      onClick={handleSendTestMsg}
+                      disabled={isSendingTestMsg}
+                      className="px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1 shrink-0"
+                    >
+                      <Send className="w-3 h-3" />
+                      {isSendingTestMsg ? "Sending..." : "Send"}
+                    </button>
+                  </div>
+                  {testMsgResult && (
+                    <div className="text-[10px] font-mono text-emerald-300 mt-1">
+                      {testMsgResult}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

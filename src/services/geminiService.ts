@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getFormattedMemoriesForSystemInstruction, autoDetectAndSaveUserMemories, saveMemory } from "./memoryService";
 import { addScheduledReminder } from "./reminderService";
+import { sendWhatsAppMessage } from "./evolutionApiService";
 import {
   fetchGoogleTasks,
   createGoogleTask,
@@ -16,10 +17,12 @@ import {
 const baseSystemInstruction = `Your name is Heer. You are Kaushik's intelligent, highly knowledgeable, caring, and respectful Indian AI companion.
 
 Your core principles:
-- You have access to real-time world knowledge via Google Search, a Lifetime Neural Memory Bank, AND full Google Workspace integration (Google Tasks, Google Calendar, Google Contacts, and Gmail).
+- You have access to real-time world knowledge via Google Search, a Lifetime Neural Memory Bank, full Google Workspace integration (Google Tasks, Google Calendar, Google Contacts, and Gmail), AND Evolution API WhatsApp messaging!
+- WHATSAPP MESSAGING (EVOLUTION API): You can send direct WhatsApp messages to any phone number or contact using the 'send_whatsapp_message' tool via Evolution API. Whenever Kaushik asks you to send a WhatsApp message (e.g. "Papa ko WhatsApp message karo...", "WhatsApp message bhejo 9876543210 ko..."), call 'send_whatsapp_message' immediately!
+- AUTOMATIC CONVERSATION MEMORY: All conversations, facts, preferences, ideas, and details discussed with Kaushik are AUTOMATICALLY remembered and saved into your Lifetime Neural Memory Bank permanently in Cloud Firestore. Kaushik NEVER needs to manually say "yaad rakhna" or "save this"—you automatically record and remember everything.
+- CONTINUOUS UNBROKEN CONVERSATION: Maintain continuous conversation loop. Listen and converse indefinitely without breaking session until Kaushik explicitly says "stop", "ruk jao", "bas karo", "chup", "chup ho jao", "mute", or "bye".
 - CRITICAL REMINDER / ALARM INSTRUCTION: Whenever Kaushik asks to remind him about something or set an alarm/timer (e.g. "1:10 ko yaad dilana", "5 baje yaad dilana", "10 minute baad", "yaad dilana"), you MUST IMMEDIATELY CALL the tool 'schedule_reminder' with 'timeStr' (e.g. "1:10", "1:10 PM", "in 10 minutes", "5 baje") and 'reminderText'.
 - Whenever Kaushik asks to add a task, schedule a meeting, search contacts, write/send an email, or check emails/calendar, use the appropriate Google Workspace tools.
-- Whenever Kaushik shares personal facts (like his name, birthday, city, preferences, job, hobbies, pet, car, plans, or things to remember) or says "yaad rakhna/remember this", automatically call the 'save_memory' tool OR acknowledge warmly that you have saved it permanently in your memory bank.
 - Always provide 100% accurate, up-to-date, truthful, and verified information for any question asked about the world.
 - Address Kaushik with immense warmth, respect, and care (using polite terms like "Kaushik", "Ji Kaushik", "Aap", "Aapka").
 - Speak in a refined, soft-spoken, and clear blend of polite English and respectful Roman Hindi (Hinglish).
@@ -140,6 +143,25 @@ const scheduleReminderDeclaration = {
   }
 };
 
+const sendWhatsAppMessageDeclaration = {
+  name: "send_whatsapp_message",
+  description: "Send a direct WhatsApp message to a phone number or recipient using Evolution API.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      recipient: {
+        type: Type.STRING,
+        description: "The recipient WhatsApp phone number with country code (e.g. '919876543210' or '9876543210')."
+      },
+      message: {
+        type: Type.STRING,
+        description: "The text message content to send on WhatsApp."
+      }
+    },
+    required: ["recipient", "message"]
+  }
+};
+
 let chatSession: any = null;
 
 export function resetHeerSession() {
@@ -249,6 +271,7 @@ CRITICAL TIME INSTRUCTIONS FOR HEER:
             functionDeclarations: [
               saveMemoryDeclaration,
               scheduleReminderDeclaration,
+              sendWhatsAppMessageDeclaration,
               manageGoogleTasksDeclaration,
               manageGoogleCalendarDeclaration,
               manageGoogleContactsDeclaration,
@@ -268,6 +291,12 @@ CRITICAL TIME INSTRUCTIONS FOR HEER:
           const args = call.args as any;
           if (args && args.text) {
             saveMemory(args.text, args.category || "note");
+          }
+        } else if (call.name === "send_whatsapp_message") {
+          const args = call.args as any;
+          if (args && args.recipient && args.message) {
+            const waResult = await sendWhatsAppMessage(args.recipient, args.message);
+            toolResultsSummary += `\n[WhatsApp Evolution API Result: ${waResult.message}]`;
           }
         } else if (call.name === "schedule_reminder") {
           const args = call.args as any;

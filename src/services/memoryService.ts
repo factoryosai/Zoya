@@ -294,6 +294,12 @@ export function autoDetectAndSaveUserMemories(userText: string): boolean {
   const rawText = userText.trim();
   const lower = rawText.toLowerCase();
 
+  // Ignore trivial greetings
+  const trivial = ["hi", "hello", "hey", "ok", "okay", "haan", "thanks", "thank you", "bye", "goodbye"];
+  if (trivial.includes(lower)) {
+    return false;
+  }
+
   // Explicit memory request keywords in Hinglish, Hindi, or English
   const explicitKeywords = [
     "yaad rakhna", "yaad rakho", "yaad rakhiye", "yaad kar lo", "yaad rakhna ki", "yaad rakhna ke",
@@ -360,6 +366,14 @@ export function autoDetectAndSaveUserMemories(userText: string): boolean {
       saveMemory(rawText, cat);
       return true;
     }
+  }
+
+  // AUTO-SAVE ALL CONVERSATIONS: Save any meaningful statement or conversation turn as a auto-logged note memory
+  if (rawText.length >= 8 && !rawText.startsWith("http")) {
+    // Save as auto conversation note so Heer remembers everything spoken automatically!
+    const formattedFact = `Kaushik said in conversation: "${rawText}"`;
+    saveMemory(formattedFact, "note");
+    return true;
   }
 
   return false;

@@ -290,9 +290,24 @@ export default function App() {
       return;
     }
 
+    const lowerTranscript = finalTranscript.trim().toLowerCase();
+    const isStopCommand = ["stop", "ruk jao", "bas karo", "chup", "chup ho jao", "session end", "end session"].some(k => lowerTranscript.includes(k));
+
     triggerHaptic("command");
     setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "user", text: finalTranscript }]);
     
+    // Handle explicit user request to stop conversation loop
+    if (isStopCommand && isSessionActive) {
+      if (liveSessionRef.current) {
+        liveSessionRef.current.stop(true);
+        liveSessionRef.current = null;
+      }
+      setIsSessionActive(false);
+      setAppState("idle");
+      setMessages((prev) => [...prev, { id: Date.now().toString() + "-h", sender: "heer", text: "Ji Kaushik, maine conversation pause kar di hai. Jab bhi baat karni ho, bas 'Start Session' pe click kijiye." }]);
+      return;
+    }
+
     // If live session is active, send text through it
     if (isSessionActive && liveSessionRef.current) {
       liveSessionRef.current.sendText(finalTranscript);
@@ -452,6 +467,20 @@ export default function App() {
             <p className="text-[11px] text-white/50 hidden sm:block">AI Voice Companion for Kaushik</p>
           </div>
         </div>
+
+        {/* Continuous Conversation Loop Indicator */}
+        {isSessionActive && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/50 text-[11px] font-mono text-emerald-300 shadow-lg pointer-events-auto"
+            title="Conversation will stay active continuously until you say 'stop' or click 'End Session'"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="font-semibold hidden sm:inline">Continuous Voice Active</span>
+            <span className="text-[10px] text-emerald-400/80">(Auto-Loop)</span>
+          </motion.div>
+        )}
 
         {/* Adaptive Mode Sentiment Status Badge */}
         {colorTheme === "adaptive" && detectedSentiment && (
