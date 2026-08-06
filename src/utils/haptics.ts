@@ -1,7 +1,7 @@
 /**
  * Triggers short, subtle haptic pulses on supported devices via the Vibration API.
  */
-export function triggerHaptic(type: "command" | "speaking_finished" | "button_tap" | "success" = "command") {
+export function triggerHaptic(type: "command" | "speaking_finished" | "button_tap" | "success" | "error" = "command") {
   if (typeof window === "undefined" || !("vibrate" in navigator)) {
     return;
   }
@@ -23,6 +23,10 @@ export function triggerHaptic(type: "command" | "speaking_finished" | "button_ta
       case "success":
         // Double success pulse
         navigator.vibrate([20, 40, 20]);
+        break;
+      case "error":
+        // Warning buzz pattern
+        navigator.vibrate([40, 50, 40]);
         break;
       default:
         navigator.vibrate(15);

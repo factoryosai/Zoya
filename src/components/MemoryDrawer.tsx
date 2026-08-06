@@ -85,12 +85,22 @@ export default function MemoryDrawer({ isOpen, onClose, onSpeakText }: MemoryDra
                   </p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={refreshMemories}
+                  disabled={isRefreshing}
+                  title="Update & Sync Memory Bank with Cloud Firestore"
+                  className="p-2 rounded-full hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Add Memory Form */}
