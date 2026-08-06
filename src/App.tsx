@@ -1,8 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, Sun, Brain, Sliders, MessageSquare, Sparkles, Youtube, MessageCircle, Play, Flame, Calendar, CheckSquare, Users, Mail, LayoutGrid } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Loader2,
+  Volume2,
+  VolumeX,
+  Keyboard,
+  Send,
+  Trash2,
+  Sun,
+  Brain,
+  Sliders,
+  MessageSquare,
+  Sparkles,
+  Youtube,
+  MessageCircle,
+  Play,
+  Flame,
+  Calendar,
+  CheckSquare,
+  Users,
+  Mail,
+  LayoutGrid,
+  RefreshCw,
+  CheckCircle2,
+  CloudLightning,
+} from "lucide-react";
 import { getHeerResponse, getHeerAudio, resetHeerSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
+import { syncAllData, DataSyncReport } from "./services/dataSyncService";
 import Visualizer from "./components/Visualizer";
 import PermissionModal from "./components/PermissionModal";
 import MorningBriefingModal from "./components/MorningBriefingModal";
@@ -79,6 +106,52 @@ export default function App() {
   const [showWorkspaceDrawer, setShowWorkspaceDrawer] = useState(false);
   const [activeAlarm, setActiveAlarm] = useState<ScheduledReminder | null>(null);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
+
+  // Data Synchronization & Update State
+  const [isSyncingData, setIsSyncingData] = useState(false);
+  const [lastSyncReport, setLastSyncReport] = useState<DataSyncReport | null>(null);
+  const [showSyncToast, setShowSyncToast] = useState(false);
+
+  const handleTriggerSyncAllData = async (speakAnnouncement = true) => {
+    triggerHaptic("command");
+    setIsSyncingData(true);
+    try {
+      const report = await syncAllData();
+      setLastSyncReport(report);
+      setShowSyncToast(true);
+      triggerHaptic("success");
+
+      setTimeout(() => {
+        setShowSyncToast(false);
+      }, 5000);
+
+      const confirmMsg = `[✓ All Data Updated & Synced] Cloud Memories: ${report.memoriesCount} | Workspace: ${report.tasksCount} Tasks, ${report.eventsCount} Events, ${report.contactsCount} Contacts | WhatsApp: ${report.evolutionStatus} | Reminders: ${report.remindersCount}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "-sync",
+          sender: "heer",
+          text: confirmMsg,
+        },
+      ]);
+
+      if (speakAnnouncement && !isMuted) {
+        setAppState("speaking");
+        await playHeerSpeech(
+          `Ji Kaushik, aapka saara data successfully update aur sync kar diya gaya hai. ${report.memoriesCount} memories, workspace data, aur Evolution API sab fully synchronized hain.`
+        );
+        setAppState("idle");
+      }
+
+      return report;
+    } catch (e: any) {
+      console.error("Data sync error:", e);
+      triggerHaptic("error");
+    } finally {
+      setIsSyncingData(false);
+    }
+  };
 
   const handleSimulateIncomingCall = () => {
     triggerHaptic("button_tap");
@@ -316,8 +389,13 @@ export default function App() {
 
     setAppState("processing");
 
-    // 1. Check for browser commands
+    // 1. Check for browser and sync commands
     const commandResult = processCommand(finalTranscript);
+
+    if (commandResult.isSyncAction) {
+      await handleTriggerSyncAllData(true);
+      return;
+    }
 
     let responseText = "";
 
@@ -457,7 +535,7 @@ export default function App() {
       <DynamicBackground timeOfDayMode={timeOfDayMode} appState={appState} colorTheme={activeTheme} />
 
       {/* Header */}
-      <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-4 md:px-8 py-4">
+      <header className="absolute top-0 left-0 w-full flex flex-wrap justify-between items-center z-20 shrink-0 px-4 md:px-8 py-3 gap-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-500 to-pink-500 flex items-center justify-center font-bold text-sm shadow-lg shadow-cyan-500/30">
             H
@@ -468,38 +546,126 @@ export default function App() {
           </div>
         </div>
 
-        {/* Continuous Conversation Loop Indicator */}
-        {isSessionActive && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/50 text-[11px] font-mono text-emerald-300 shadow-lg pointer-events-auto"
-            title="Conversation will stay active continuously until you say 'stop' or click 'End Session'"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-semibold hidden sm:inline">Continuous Voice Active</span>
-            <span className="text-[10px] text-emerald-400/80">(Auto-Loop)</span>
-          </motion.div>
-        )}
-
-        {/* Adaptive Mode Sentiment Status Badge */}
-        {colorTheme === "adaptive" && detectedSentiment && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0a1532]/90 backdrop-blur-md border border-amber-400/40 text-[11px] font-mono text-white shadow-lg pointer-events-auto"
-            title={detectedSentiment.description}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span className="text-white/60 hidden md:inline">Adaptive Sentiment:</span>
-            <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${detectedSentiment.badgeColor}`}>
-              {detectedSentiment.label}
-            </span>
-          </motion.div>
-        )}
-
-        {/* Minimal Audio Control */}
+        {/* Center Indicators */}
         <div className="flex items-center gap-2">
+          {/* Continuous Conversation Loop Indicator */}
+          {isSessionActive && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/50 text-[11px] font-mono text-emerald-300 shadow-lg pointer-events-auto"
+              title="Conversation will stay active continuously until you say 'stop' or click 'End Session'"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="font-semibold hidden sm:inline">Continuous Voice Active</span>
+              <span className="text-[10px] text-emerald-400/80">(Auto-Loop)</span>
+            </motion.div>
+          )}
+
+          {/* Adaptive Mode Sentiment Status Badge */}
+          {colorTheme === "adaptive" && detectedSentiment && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0a1532]/90 backdrop-blur-md border border-amber-400/40 text-[11px] font-mono text-white shadow-lg pointer-events-auto"
+              title={detectedSentiment.description}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="text-white/60 hidden md:inline">Adaptive Sentiment:</span>
+              <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${detectedSentiment.badgeColor}`}>
+                {detectedSentiment.label}
+              </span>
+            </motion.div>
+          )}
+        </div>
+
+        {/* High-Tech Quick Action Toolbar */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {/* Update / Sync All Data Button */}
+          <button
+            onClick={() => handleTriggerSyncAllData(true)}
+            disabled={isSyncingData}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all backdrop-blur-md shadow-lg ${
+              isSyncingData
+                ? "bg-cyan-500/20 border-cyan-400 text-cyan-200"
+                : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white"
+            }`}
+            title="Update & Sync All Data (Memories, Google Workspace, WhatsApp, Reminders)"
+          >
+            <RefreshCw
+              size={14}
+              className={`text-cyan-400 ${isSyncingData ? "animate-spin text-cyan-300" : "hover:rotate-180 transition-transform duration-500"}`}
+            />
+            <span className="hidden sm:inline font-semibold">
+              {isSyncingData ? "Updating Data..." : "Update All Data"}
+            </span>
+          </button>
+
+          {/* Google Workspace Button */}
+          <button
+            onClick={() => {
+              triggerHaptic("button_tap");
+              setShowWorkspaceDrawer(true);
+            }}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-white/70 hover:text-cyan-300"
+            title="Google Workspace (Tasks, Calendar, Contacts, Gmail)"
+          >
+            <LayoutGrid size={16} />
+          </button>
+
+          {/* Memory Bank Button */}
+          <button
+            onClick={() => {
+              triggerHaptic("button_tap");
+              setShowMemoryDrawer(true);
+            }}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-white/70 hover:text-cyan-300"
+            title="Lifetime Neural Memory Bank (Cloud Firestore)"
+          >
+            <Brain size={16} />
+          </button>
+
+          {/* Daily Briefing Button */}
+          <button
+            onClick={() => {
+              triggerHaptic("button_tap");
+              setShowBriefing(true);
+            }}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-white/70 hover:text-amber-300"
+            title="Morning & Daily Briefing"
+          >
+            <Sun size={16} />
+          </button>
+
+          {/* Chat History Button */}
+          <button
+            onClick={() => {
+              triggerHaptic("button_tap");
+              setShowChatHistory(!showChatHistory);
+            }}
+            className={`p-2 rounded-xl border transition-colors ${
+              showChatHistory
+                ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-300"
+                : "bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white"
+            }`}
+            title="Toggle Recent Conversation Log"
+          >
+            <MessageSquare size={16} />
+          </button>
+
+          {/* Settings Button */}
+          <button
+            onClick={() => {
+              triggerHaptic("button_tap");
+              setShowSettings(true);
+            }}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-white/70 hover:text-cyan-300"
+            title="Settings (Evolution API WhatsApp, Voice, Persona, Theme)"
+          >
+            <Sliders size={16} />
+          </button>
+
+          {/* Audio Mute/Unmute */}
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
@@ -513,6 +679,37 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Floating Sync Feedback Toast Banner */}
+      <AnimatePresence>
+        {showSyncToast && lastSyncReport && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-18 z-40 px-4 py-2.5 rounded-2xl bg-[#081329]/95 border border-cyan-500/40 text-white shadow-2xl backdrop-blur-xl flex items-center gap-3 max-w-xl mx-auto"
+          >
+            <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div className="flex-1 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-cyan-200">
+                <span>All Data Synchronized & Updated</span>
+                <span className="text-[10px] text-white/40 font-mono">({lastSyncReport.formattedTime})</span>
+              </div>
+              <p className="text-white/70 text-[11px] mt-0.5">
+                {lastSyncReport.memoriesCount} Memories • {lastSyncReport.tasksCount} Tasks • {lastSyncReport.eventsCount} Events • WhatsApp: {lastSyncReport.evolutionStatus} • {lastSyncReport.remindersCount} Reminders
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSyncToast(false)}
+              className="text-white/40 hover:text-white text-xs p-1"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content - Visualizer & Chat Drawer */}
       <main className="absolute inset-0 flex flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-20 pb-28 px-4 md:px-12 pointer-events-none">
@@ -618,7 +815,10 @@ export default function App() {
       </AnimatePresence>
 
       {/* Footer Controls */}
-      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-5 md:pb-7 z-20 shrink-0 gap-3">
+      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-4 md:pb-6 z-20 shrink-0 gap-2.5">
+        {/* Ambient Focus Soundscapes */}
+        <SoundscapeDock />
+
         {/* Text Input Drawer */}
         <AnimatePresence>
           {showTextInput && (

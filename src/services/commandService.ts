@@ -2,8 +2,30 @@ export function processCommand(command: string): {
   action: string;
   url?: string;
   isBrowserAction: boolean;
+  isSyncAction?: boolean;
 } {
   const lowerCmd = command.toLowerCase().trim();
+
+  // Update All Data / Sync All Data Commands
+  if (
+    lowerCmd.includes("update all data") ||
+    lowerCmd.includes("update data") ||
+    lowerCmd.includes("sync all data") ||
+    lowerCmd.includes("sync data") ||
+    lowerCmd.includes("refresh all data") ||
+    lowerCmd.includes("refresh data") ||
+    lowerCmd.includes("data update") ||
+    lowerCmd.includes("data refresh") ||
+    lowerCmd.includes("data sync") ||
+    lowerCmd.includes("saara data update") ||
+    lowerCmd.includes("sara data update")
+  ) {
+    return {
+      action: "Ji Kaushik, main aapka saara data—Firebase Cloud Memories, Google Workspace (Tasks, Calendar, Contacts, Gmail), Evolution API WhatsApp, aur Alarms sync aur update kar rahi hu.",
+      isBrowserAction: true,
+      isSyncAction: true,
+    };
+  }
 
   // Phone Call Dialer: "call [number/name]" or "dial [number]"
   const callMatch = lowerCmd.match(/^(?:call|dial)\s+([\d\+\s]+|[a-zA-Z\s]+)$/);

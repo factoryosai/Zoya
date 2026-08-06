@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { getFormattedMemoriesForSystemInstruction, autoDetectAndSaveUserMemories, saveMemory } from "./memoryService";
 import { addScheduledReminder } from "./reminderService";
 import { sendWhatsAppMessage } from "./evolutionApiService";
+import { syncAllData } from "./dataSyncService";
 import {
   fetchGoogleTasks,
   createGoogleTask,
@@ -162,6 +163,20 @@ const sendWhatsAppMessageDeclaration = {
   }
 };
 
+const syncAllDataDeclaration = {
+  name: "sync_all_data",
+  description: "Synchronize and update all application data (Firebase Cloud Memories, Google Workspace data, Evolution API WhatsApp status, and Alarms/Reminders).",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      forceRefresh: {
+        type: Type.BOOLEAN,
+        description: "Whether to perform a full force refresh."
+      }
+    }
+  }
+};
+
 let chatSession: any = null;
 
 export function resetHeerSession() {
@@ -272,6 +287,7 @@ CRITICAL TIME INSTRUCTIONS FOR HEER:
               saveMemoryDeclaration,
               scheduleReminderDeclaration,
               sendWhatsAppMessageDeclaration,
+              syncAllDataDeclaration,
               manageGoogleTasksDeclaration,
               manageGoogleCalendarDeclaration,
               manageGoogleContactsDeclaration,
@@ -287,7 +303,10 @@ CRITICAL TIME INSTRUCTIONS FOR HEER:
     // Execute any function calls triggered by Gemini
     if (response.functionCalls && response.functionCalls.length > 0) {
       for (const call of response.functionCalls) {
-        if (call.name === "save_memory") {
+        if (call.name === "sync_all_data") {
+          const syncReport = await syncAllData();
+          toolResultsSummary += `\n[Data Sync Complete: ${syncReport.summaryMessage}]`;
+        } else if (call.name === "save_memory") {
           const args = call.args as any;
           if (args && args.text) {
             saveMemory(args.text, args.category || "note");

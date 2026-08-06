@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2, Brain, Bookmark, Clock, Heart, Sparkles, ShieldCheck } from "lucide-react";
+import { X, Plus, Trash2, Brain, Bookmark, Clock, Heart, Sparkles, ShieldCheck, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getMemories, saveMemory, deleteMemory, MemoryItem } from "../services/memoryService";
+import { syncAllData } from "../services/dataSyncService";
 
 interface MemoryDrawerProps {
   isOpen: boolean;
@@ -13,6 +14,19 @@ export default function MemoryDrawer({ isOpen, onClose, onSpeakText }: MemoryDra
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [newText, setNewText] = useState("");
   const [category, setCategory] = useState<MemoryItem["category"]>("note");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshMemories = async () => {
+    setIsRefreshing(true);
+    try {
+      await syncAllData();
+      setMemories(getMemories());
+    } catch (e) {
+      setMemories(getMemories());
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const refresh = () => setMemories(getMemories());
