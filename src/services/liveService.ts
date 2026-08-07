@@ -107,7 +107,7 @@ export class LiveSessionManager {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
-          systemInstruction: baseSystemInstruction + getFormattedMemoriesForSystemInstruction(),
+          systemInstruction: baseSystemInstruction + clockInstruction + getFormattedMemoriesForSystemInstruction(),
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           tools: [{
