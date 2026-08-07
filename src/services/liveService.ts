@@ -99,6 +99,16 @@ export class LiveSessionManager {
       this.source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
 
+      // Live clock so voice mode knows the real local time (was missing before,
+      // which caused Heer to report time based on raw UTC instead of IST).
+      const now = new Date();
+      const timeZoneStr = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+      const time12Str = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+      const clockInstruction = `\n\n[LIVE CLOCK - MANDATORY TRUTH]:
+- Current local date & time: ${now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}, ${time12Str}
+- Timezone: ${timeZoneStr}
+- Always answer "what time is it" using this exact time, converted to whatever format Kaushik expects (e.g. 12-hour with AM/PM). Never guess or use UTC.`;
+
       // Connect to Live API
       this.sessionPromise = this.ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
